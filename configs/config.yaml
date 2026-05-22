@@ -1,0 +1,40 @@
+project:
+  name: nhtsa-recall-risk-mlops
+
+nhtsa:
+  base_url: "https://api.nhtsa.gov"
+  vpic_base_url: "https://vpic.nhtsa.dot.gov/api"
+
+data:
+  raw_dir: "data/raw"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+  local_db_path: "data/processed/recall_risk.duckdb"
+
+modeling:
+  prediction_horizon_days: 90
+  aggregation_frequency: "W"
+  entity_keys:
+    - make
+    - model
+    - model_year
+    - component
+
+mvp_sample:
+  live_data_start_date: "2025-01-01"
+  live_data_end_date: "2026-05-15"
+  backfill_start_date: "2015-01-01"
+  makes:
+    - HYUNDAI
+    - KIA
+    - TOYOTA
+    - FORD
+    - TESLA
+  model_years:
+    - 2020
+    - 2021
+    - 2022
+    - 2023
+    - 2024
+    - 2025
+    - 2026

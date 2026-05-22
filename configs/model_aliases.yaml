@@ -1,0 +1,70 @@
+{
+  "description": "Model alias candidates used before large NHTSA backfill. This file is JSON-formatted YAML so it can be read with Python stdlib json.",
+  "checks": [
+    {
+      "make": "FORD",
+      "canonical_model": "F-150",
+      "model_year": 2022,
+      "reason": "VPIC lists F-150, recalls endpoint returned rows, but complaints endpoint returned HTTP 400 with empty results in the smoke test.",
+      "candidates": [
+        "F-150",
+        "F150",
+        "F 150",
+        "F-SERIES",
+        "F SERIES",
+        "F-150 REGULAR CAB",
+        "F-150 SUPERCREW",
+        "F-150 SUPER CAB"
+      ]
+    },
+    {
+      "make": "FORD",
+      "canonical_model": "F-150",
+      "model_year": 2021,
+      "reason": "Neighboring year check for the same F-150 alias issue.",
+      "candidates": [
+        "F-150",
+        "F150",
+        "F 150",
+        "F-SERIES",
+        "F SERIES"
+      ]
+    },
+    {
+      "make": "FORD",
+      "canonical_model": "F-150",
+      "model_year": 2023,
+      "reason": "Neighboring year check for the same F-150 alias issue.",
+      "candidates": [
+        "F-150",
+        "F150",
+        "F 150",
+        "F-SERIES",
+        "F SERIES"
+      ]
+    },
+    {
+      "make": "TESLA",
+      "canonical_model": "MODEL 3",
+      "model_year": 2022,
+      "reason": "Known-good control case from smoke test.",
+      "candidates": [
+        "MODEL 3",
+        "MODEL3",
+        "MODEL-3"
+      ]
+    },
+    {
+      "make": "HYUNDAI",
+      "canonical_model": "SANTA FE",
+      "model_year": 2022,
+      "reason": "Known-good control case from smoke test.",
+      "candidates": [
+        "SANTA FE",
+        "SANTAFE",
+        "SANTA-FE"
+      ]
+    }
+  ]
+}
+
