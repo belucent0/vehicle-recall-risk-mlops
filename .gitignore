@@ -16,14 +16,16 @@ data/interim/*
 data/processed/*
 models/*
 reports/*
+logs/airflow/*
 mlruns/
-mlflow.db
-mlflow.db-*
+mlflow*.db
+mlflow*.db-*
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 !models/.gitkeep
 !reports/.gitkeep
+!logs/airflow/.gitkeep
 
 # Notebooks
 .ipynb_checkpoints/

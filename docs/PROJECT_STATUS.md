@@ -1,11 +1,11 @@
 # Project Status
 
-작성일: 2026-05-21 KST
+작성일: 2026-05-22 KST
 
 ## 프로젝트
 
 ```text
-NHTSA Recall Risk MLOps
+Vehicle Recall Risk MLOps
 ```
 
 ## 목표
@@ -16,10 +16,10 @@ NHTSA Recall Risk MLOps
 
 ```text
 MVP complete
-PostgreSQL stack selected
 PostgreSQL load verified
 FastAPI read API verified
 MLflow baseline logging verified
+Airflow DAG scaffold/smoke verified
 ```
 
 ## MVP 주요 결과
@@ -49,24 +49,8 @@ latest risk week: 2026-05-11
 PostgreSQL: done
 FastAPI: done
 MLflow: done
-Airflow: next
-Docker/CI: pending
-```
-
-## 주요 파일
-
-```text
-docker-compose.yml
-configs/postgres.env.example
-infra/postgres/initdb/001_schema.sql
-pipelines/load_postgres.py
-pipelines/log_baseline_mlflow.py
-src/recall_risk/storage/postgres.py
-src/recall_risk/serving/app.py
-tests/test_serving_app.py
-docs/POSTGRESQL_LOAD_RESULTS.md
-docs/FASTAPI_READ_API_RESULTS.md
-docs/MLFLOW_CONNECTION_RESULTS.md
+Airflow: smoke done
+Docker/CI: next
 ```
 
 ## PostgreSQL 적재 결과
@@ -118,27 +102,8 @@ docs/FASTAPI_READ_API_RESULTS.md
 
 완료일: 2026-05-21 KST
 
-Tracking URI:
-
 ```text
-sqlite:///C:/timblo/nhtsa-recall-risk-mlops/mlflow.db
-```
-
-Experiment:
-
-```text
-nhtsa-recall-risk
-```
-
-Run:
-
-```text
-a4d29d2edaee414080dda8eefa3151eb
-```
-
-검증:
-
-```text
+experiment: nhtsa-recall-risk
 metrics logged: 45
 artifacts logged: 4
 logistic_average_precision: 0.008251
@@ -151,30 +116,59 @@ rule_average_precision: 0.006281
 docs/MLFLOW_CONNECTION_RESULTS.md
 ```
 
+## Airflow DAG 결과
+
+완료일: 2026-05-22 KST
+
+Airflow UI:
+
+```text
+http://localhost:18080
+admin / admin
+```
+
+DAG:
+
+```text
+nhtsa_recall_risk_mvp
+```
+
+검증:
+
+```text
+docker compose config: passed
+Airflow image build: passed
+airflow-init: passed
+webserver/scheduler health: passed
+DAG import: passed
+check_project_files task test: SUCCESS
+log_mlflow task test: SUCCESS
+```
+
+상세 문서:
+
+```text
+docs/AIRFLOW_DAG_RESULTS.md
+```
+
 ## 현재 다음 작업
 
 ```text
-P4. Airflow DAG 전환
-```
-
-목표:
-
-```text
-기존 수집/정규화/feature/model/report/DB/MLflow 작업을 DAG 단위로 묶는다.
+P5. Docker/CI 정리
 ```
 
 첫 범위:
 
 ```text
-1. docker-compose에 Airflow 서비스 추가
-2. dags/nhtsa_recall_risk_mvp.py 작성
-3. PythonOperator 또는 BashOperator로 기존 pipeline script 호출
-4. DAG smoke test
+1. FastAPI Dockerfile 추가
+2. docker-compose에 api 서비스 추가
+3. GitHub Actions CI 추가
+4. pytest 자동 실행
 ```
 
-## 이후 순서
+선택 작업:
 
 ```text
-P5. Docker/CI 정리
+Airflow 전체 DAG end-to-end 실행
 ```
 

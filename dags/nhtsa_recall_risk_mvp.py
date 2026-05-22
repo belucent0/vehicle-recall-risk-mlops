@@ -47,6 +47,7 @@ with DAG(
             "&& test -f pipelines/load_postgres.py "
             "&& test -f pipelines/log_baseline_mlflow.py"
         ),
+        do_xcom_push=False,
     )
 
     normalize_backfill = BashOperator(
@@ -54,6 +55,7 @@ with DAG(
         bash_command=project_command(
             f"python pipelines/normalize_backfill.py --run-id {RUN_ID}"
         ),
+        do_xcom_push=False,
     )
 
     build_features_labels = BashOperator(
@@ -63,6 +65,7 @@ with DAG(
             f"--run-id {RUN_ID} "
             f"--data-as-of-date {DATA_AS_OF_DATE}"
         ),
+        do_xcom_push=False,
     )
 
     train_baseline = BashOperator(
@@ -74,6 +77,7 @@ with DAG(
             "--negative-ratio 20 "
             "--max-train-rows 100000"
         ),
+        do_xcom_push=False,
     )
 
     generate_latest_risk_report = BashOperator(
@@ -81,6 +85,7 @@ with DAG(
         bash_command=project_command(
             f"python pipelines/generate_latest_risk_report.py --run-id {RUN_ID} --top-k 25"
         ),
+        do_xcom_push=False,
     )
 
     load_postgres = BashOperator(
@@ -88,6 +93,7 @@ with DAG(
         bash_command=project_command(
             f"python pipelines/load_postgres.py --run-id {RUN_ID} --apply-schema --truncate"
         ),
+        do_xcom_push=False,
     )
 
     log_mlflow = BashOperator(
@@ -95,6 +101,7 @@ with DAG(
         bash_command=project_command(
             f"python pipelines/log_baseline_mlflow.py --run-id {RUN_ID}"
         ),
+        do_xcom_push=False,
     )
 
     (
@@ -106,4 +113,3 @@ with DAG(
         >> load_postgres
         >> log_mlflow
     )
-

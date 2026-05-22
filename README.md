@@ -26,6 +26,7 @@ docs/MVP_SUMMARY.md
 docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
 docs/MLFLOW_CONNECTION_RESULTS.md
+docs/AIRFLOW_DAG_RESULTS.md
 ```
 
 ## Local commands
@@ -53,4 +54,3 @@ python -m pytest -q
 ## Note
 
 This repository is intentionally evolving. The README will be rewritten after the MVP MLOps flow is stable.
-

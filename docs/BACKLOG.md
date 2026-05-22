@@ -1,27 +1,6 @@
 # Backlog
 
-MVP는 완료했다. 이제 MLOps 포트폴리오화 단계로 넘어간다.
-
-## 기술스택 결정
-
-2026-05-16 결정:
-
-```text
-PostgreSQL을 메인 저장소로 사용한다.
-DuckDB는 도입하지 않는다.
-```
-
-2026-05-20:
-
-```text
-FastAPI를 붙여 PostgreSQL의 latest risk score를 읽는 API까지 확인했다.
-```
-
-2026-05-21:
-
-```text
-MLflow SQLite tracking backend에 baseline metrics/artifacts를 기록했다.
-```
+MVP는 완료했다. 현재는 MLOps 포트폴리오화 단계다.
 
 ## 현재 완료 상태
 
@@ -45,60 +24,76 @@ M10 MVP README 정리: done
 P1 PostgreSQL 적재 확인: done
 P2 FastAPI에서 PostgreSQL 조회: done
 P3 MLflow 연결: done
+P4 Airflow DAG scaffold/smoke: done
 ```
 
 ## 현재 다음 작업
 
 ```text
-P4. Airflow DAG 전환
+P5. Docker/CI 정리
 ```
 
 목표:
 
 ```text
-기존 pipeline script들을 Airflow DAG에서 실행 가능한 형태로 묶는다.
+로컬 Python 실행 의존도를 줄이고, GitHub에서 최소 테스트가 자동으로 돌게 만든다.
 ```
 
 산출물:
 
 ```text
-dags/nhtsa_recall_risk_mvp.py
-docker-compose.yml Airflow 서비스 추가
-Airflow 실행 문서
-DAG smoke test 결과 문서
+infra/api/Dockerfile
+docker-compose.yml api service
+.github/workflows/ci.yml
+docs/DOCKER_CI_RESULTS.md
 ```
 
-## MLOps 포트폴리오화 남은 작업
+## MLOps 포트폴리오화 작업
 
 | ID | 작업 | 목적 | 상태 |
 |---|---|---|---|
 | P1 | PostgreSQL 적재 확인 | CSV 결과물을 DB 테이블로 적재 | done |
 | P2 | FastAPI에서 PostgreSQL 조회 | latest risk score API | done |
 | P3 | MLflow 연결 | baseline metrics/model artifact 관리 | done |
-| P4 | Airflow DAG 전환 | 수집/정규화/feature/model pipeline orchestration | next |
-| P5 | Docker/CI 정리 | 포트폴리오 실행성 강화 | pending |
+| P4 | Airflow DAG 전환 | pipeline orchestration scaffold/smoke | done |
+| P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | next |
 
-## P4 구현 메모
-
-Airflow는 처음부터 복잡하게 가지 않는다.
+## P5 구현 메모
 
 권장 범위:
 
 ```text
-1. docker-compose에 airflow-webserver, airflow-scheduler 추가
-2. dags/ 디렉터리 생성
-3. 기존 Python pipeline script를 BashOperator로 호출
-4. smoke용 DAG와 MVP backfill용 DAG를 분리할지 검토
-5. PostgreSQL 적재와 MLflow logging task까지 DAG에 포함
+1. FastAPI용 Dockerfile 작성
+2. docker-compose api 서비스 추가
+3. /health, /risk-scores/latest smoke test
+4. GitHub Actions에서 pytest 실행
+5. 문서화
 ```
 
 이번 단계에서 하지 않을 것:
 
 ```text
-KubernetesExecutor
-CeleryExecutor
-복잡한 retry/alert 정책
-대규모 backfill scheduling
-production-grade secrets manager
+production-grade image optimization
+multi-stage build 고도화
+container registry push
+배포 환경 구성
+```
+
+## 선택 작업
+
+Airflow 전체 DAG 실행은 아직 하지 않았다.
+
+이유:
+
+```text
+normalize/build/train/load 전체 재실행은 상대적으로 무거운 검증이다.
+현재는 DAG import와 핵심 task smoke test로 orchestration scaffold를 검증했다.
+```
+
+필요하면 다음 명령으로 별도 실행한다.
+
+```bash
+docker compose exec airflow-webserver airflow dags unpause nhtsa_recall_risk_mvp
+docker compose exec airflow-webserver airflow dags trigger nhtsa_recall_risk_mvp
 ```
 
