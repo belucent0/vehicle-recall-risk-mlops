@@ -1,7 +1,7 @@
 [project]
-name = "nhtsa-recall-risk-mlops"
+name = "vehicle-recall-risk-mlops"
 version = "0.1.0"
-description = "Early-warning MLOps pipeline for NHTSA vehicle recall risk."
+description = "Early-warning MLOps pipeline for vehicle recall risk."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

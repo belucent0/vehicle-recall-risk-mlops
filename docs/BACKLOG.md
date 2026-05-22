@@ -1,6 +1,6 @@
 # Backlog
 
-MVP는 완료했다. 현재는 MLOps 포트폴리오화 단계다.
+MVP와 MLOps scaffold는 한 사이클 완료했다.
 
 ## 현재 완료 상태
 
@@ -25,30 +25,10 @@ P1 PostgreSQL 적재 확인: done
 P2 FastAPI에서 PostgreSQL 조회: done
 P3 MLflow 연결: done
 P4 Airflow DAG scaffold/smoke: done
+P5 Docker/CI 정리: done
 ```
 
-## 현재 다음 작업
-
-```text
-P5. Docker/CI 정리
-```
-
-목표:
-
-```text
-로컬 Python 실행 의존도를 줄이고, GitHub에서 최소 테스트가 자동으로 돌게 만든다.
-```
-
-산출물:
-
-```text
-infra/api/Dockerfile
-docker-compose.yml api service
-.github/workflows/ci.yml
-docs/DOCKER_CI_RESULTS.md
-```
-
-## MLOps 포트폴리오화 작업
+## 완료된 MLOps 포트폴리오화 작업
 
 | ID | 작업 | 목적 | 상태 |
 |---|---|---|---|
@@ -56,44 +36,81 @@ docs/DOCKER_CI_RESULTS.md
 | P2 | FastAPI에서 PostgreSQL 조회 | latest risk score API | done |
 | P3 | MLflow 연결 | baseline metrics/model artifact 관리 | done |
 | P4 | Airflow DAG 전환 | pipeline orchestration scaffold/smoke | done |
-| P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | next |
+| P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | done |
 
-## P5 구현 메모
+## 다음 작업 후보
 
-권장 범위:
+### Q1. 포트폴리오 정리
 
-```text
-1. FastAPI용 Dockerfile 작성
-2. docker-compose api 서비스 추가
-3. /health, /risk-scores/latest smoke test
-4. GitHub Actions에서 pytest 실행
-5. 문서화
-```
-
-이번 단계에서 하지 않을 것:
+목표:
 
 ```text
-production-grade image optimization
-multi-stage build 고도화
-container registry push
-배포 환경 구성
+채용 담당자/면접관이 빠르게 이해할 수 있는 공개용 설명 자료를 만든다.
 ```
 
-## 선택 작업
-
-Airflow 전체 DAG 실행은 아직 하지 않았다.
-
-이유:
+작업:
 
 ```text
-normalize/build/train/load 전체 재실행은 상대적으로 무거운 검증이다.
-현재는 DAG import와 핵심 task smoke test로 orchestration scaffold를 검증했다.
+README 정식 개편
+docs/PORTFOLIO_BRIEF.md 작성
+Mermaid 아키텍처 다이어그램 추가
+실행 순서 정리
+기술적 tradeoff 정리
 ```
 
-필요하면 다음 명령으로 별도 실행한다.
+### Q2. 모델 품질 개선
+
+목표:
+
+```text
+현재 pure Python baseline을 더 일반적인 ML workflow로 개선한다.
+```
+
+작업:
+
+```text
+scikit-learn LogisticRegression baseline
+sklearn Pipeline + StandardScaler
+class_weight='balanced'
+joblib artifact 저장
+MLflow sklearn model logging
+```
+
+### Q3. 데이터/label 품질 개선
+
+목표:
+
+```text
+recall matching과 component normalization 품질을 개선한다.
+```
+
+작업:
+
+```text
+component mapping 개선
+make/model alias 개선
+future-dated recall handling 추가 검증
+investigations/manufacturer communications 추가 검토
+```
+
+### Q4. Airflow 전체 DAG 실행
+
+목표:
+
+```text
+smoke가 아니라 전체 DAG를 실제로 한 번 실행한다.
+```
+
+명령:
 
 ```bash
 docker compose exec airflow-webserver airflow dags unpause nhtsa_recall_risk_mvp
 docker compose exec airflow-webserver airflow dags trigger nhtsa_recall_risk_mvp
+```
+
+주의:
+
+```text
+전체 normalize/build/train/load를 다시 실행하므로 시간이 걸릴 수 있다.
 ```
 

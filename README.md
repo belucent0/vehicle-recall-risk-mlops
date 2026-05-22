@@ -27,6 +27,7 @@ docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
 docs/MLFLOW_CONNECTION_RESULTS.md
 docs/AIRFLOW_DAG_RESULTS.md
+docs/DOCKER_CI_RESULTS.md
 ```
 
 ## Local commands
@@ -40,8 +41,13 @@ docker compose up -d postgres
 FastAPI:
 
 ```bash
-$env:PYTHONPATH='src'
-uvicorn recall_risk.serving.app:app --reload --host 0.0.0.0 --port 8000
+docker compose up -d api
+```
+
+API endpoint:
+
+```text
+http://localhost:28000
 ```
 
 Tests:

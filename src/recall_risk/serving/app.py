@@ -12,7 +12,7 @@ from pydantic import Field
 from recall_risk.storage.postgres import fetch_latest_risk_scores
 from recall_risk.storage.postgres import ping_database
 
-app = FastAPI(title="NHTSA Recall Risk API")
+app = FastAPI(title="Vehicle Recall Risk API")
 
 
 class HealthResponse(BaseModel):
@@ -72,4 +72,3 @@ def latest_risk_scores(
         raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
 
     return [RiskScoreResponse(**row) for row in rows]
-

@@ -1,6 +1,6 @@
 # Project Status
 
-작성일: 2026-05-22 KST
+작성일: 2026-05-23 KST
 
 ## 프로젝트
 
@@ -20,6 +20,8 @@ PostgreSQL load verified
 FastAPI read API verified
 MLflow baseline logging verified
 Airflow DAG scaffold/smoke verified
+Dockerized API verified
+GitHub Actions CI added
 ```
 
 ## MVP 주요 결과
@@ -50,125 +52,60 @@ PostgreSQL: done
 FastAPI: done
 MLflow: done
 Airflow: smoke done
-Docker/CI: next
+Docker API: done
+GitHub Actions CI: done
 ```
 
-## PostgreSQL 적재 결과
-
-완료일: 2026-05-18 KST
+## 주요 실행 포트
 
 ```text
-recall_risk.complaints: 103440
-recall_risk.recalls: 3018
-recall_risk.weekly_features: 1189569
-recall_risk.training_dataset: 1189569
-recall_risk.latest_risk_scores: 25
-recall_risk.baseline_test_predictions: 293083
+PostgreSQL: localhost:55432
+FastAPI container: http://localhost:28000
+Airflow UI: http://localhost:18080
 ```
 
-상세 문서:
+## 주요 결과 문서
 
 ```text
 docs/POSTGRESQL_LOAD_RESULTS.md
-```
-
-## FastAPI 조회 API 결과
-
-완료일: 2026-05-20 KST
-
-Endpoint:
-
-```text
-GET /health
-GET /health/db
-GET /risk-scores/latest
-```
-
-검증:
-
-```text
-unit test: 2 passed
-full test: 3 passed, 1 warning
-actual DB smoke test: passed
-```
-
-상세 문서:
-
-```text
 docs/FASTAPI_READ_API_RESULTS.md
-```
-
-## MLflow 연결 결과
-
-완료일: 2026-05-21 KST
-
-```text
-experiment: nhtsa-recall-risk
-metrics logged: 45
-artifacts logged: 4
-logistic_average_precision: 0.008251
-rule_average_precision: 0.006281
-```
-
-상세 문서:
-
-```text
 docs/MLFLOW_CONNECTION_RESULTS.md
-```
-
-## Airflow DAG 결과
-
-완료일: 2026-05-22 KST
-
-Airflow UI:
-
-```text
-http://localhost:18080
-admin / admin
-```
-
-DAG:
-
-```text
-nhtsa_recall_risk_mvp
-```
-
-검증:
-
-```text
-docker compose config: passed
-Airflow image build: passed
-airflow-init: passed
-webserver/scheduler health: passed
-DAG import: passed
-check_project_files task test: SUCCESS
-log_mlflow task test: SUCCESS
-```
-
-상세 문서:
-
-```text
 docs/AIRFLOW_DAG_RESULTS.md
+docs/DOCKER_CI_RESULTS.md
 ```
 
-## 현재 다음 작업
+## 현재 다음 작업 후보
+
+이제 필수 MLOps scaffold는 한 사이클 완성했다.
+
+다음부터는 둘 중 하나를 선택한다.
+
+### A. 포트폴리오 정리
 
 ```text
-P5. Docker/CI 정리
+README 정식 개편
+아키텍처 다이어그램
+docs/PORTFOLIO_BRIEF.md 작성
+실행 방법 정리
+한계와 개선 계획 정리
 ```
 
-첫 범위:
+### B. 모델/데이터 품질 개선
 
 ```text
-1. FastAPI Dockerfile 추가
-2. docker-compose에 api 서비스 추가
-3. GitHub Actions CI 추가
-4. pytest 자동 실행
+scikit-learn baseline 교체
+feature 개선
+component matching 개선
+label 품질 개선
+MLflow model artifact 정교화
 ```
 
-선택 작업:
+## 선택 작업
+
+Airflow 전체 DAG end-to-end 실행은 아직 하지 않았다.
 
 ```text
-Airflow 전체 DAG end-to-end 실행
+현재는 DAG import와 핵심 task smoke test로 orchestration scaffold를 검증했다.
+전체 재실행은 시간 비용이 있으므로 별도 선택 작업으로 둔다.
 ```
 
