@@ -1,6 +1,6 @@
 # Backlog
 
-MVP와 MLOps scaffold는 한 사이클 완료했다.
+MVP와 MLOps scaffold는 end-to-end로 한 사이클 완료했다.
 
 ## 현재 완료 상태
 
@@ -26,6 +26,7 @@ P2 FastAPI에서 PostgreSQL 조회: done
 P3 MLflow 연결: done
 P4 Airflow DAG scaffold/smoke: done
 P5 Docker/CI 정리: done
+P6 Airflow 전체 DAG E2E 실행: done
 ```
 
 ## 완료된 MLOps 포트폴리오화 작업
@@ -37,6 +38,7 @@ P5 Docker/CI 정리: done
 | P3 | MLflow 연결 | baseline metrics/model artifact 관리 | done |
 | P4 | Airflow DAG 전환 | pipeline orchestration scaffold/smoke | done |
 | P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | done |
+| P6 | Airflow 전체 DAG E2E 실행 | orchestration end-to-end 검증 | done |
 
 ## 다음 작업 후보
 
@@ -93,24 +95,11 @@ future-dated recall handling 추가 검증
 investigations/manufacturer communications 추가 검토
 ```
 
-### Q4. Airflow 전체 DAG 실행
-
-목표:
+## 남은 주의사항
 
 ```text
-smoke가 아니라 전체 DAG를 실제로 한 번 실행한다.
-```
-
-명령:
-
-```bash
-docker compose exec airflow-webserver airflow dags unpause nhtsa_recall_risk_mvp
-docker compose exec airflow-webserver airflow dags trigger nhtsa_recall_risk_mvp
-```
-
-주의:
-
-```text
-전체 normalize/build/train/load를 다시 실행하므로 시간이 걸릴 수 있다.
+1. collect_backfill은 이번 Airflow E2E DAG에 포함하지 않았다.
+2. 현재 Airflow E2E는 기존 raw backfill 데이터를 기준으로 재처리한다.
+3. GitHub Actions 원격 실행 green 여부는 GitHub에서 별도 확인이 필요하다.
 ```
 

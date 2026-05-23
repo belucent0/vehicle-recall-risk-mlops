@@ -8,10 +8,6 @@
 Vehicle Recall Risk MLOps
 ```
 
-## 목표
-
-미국 NHTSA 공개 데이터를 이용해 차량/부품 단위의 리콜 위험 신호를 조기 감지하는 MVP를 만들고, 이후 MLOps 포트폴리오 구조로 확장한다.
-
 ## 현재 상태
 
 ```text
@@ -19,14 +15,14 @@ MVP complete
 PostgreSQL load verified
 FastAPI read API verified
 MLflow baseline logging verified
-Airflow DAG scaffold/smoke verified
+Airflow DAG end-to-end run verified
 Dockerized API verified
 GitHub Actions CI added
 ```
 
-## MVP 주요 결과
+## 핵심 결과
 
-기준 run:
+기준 데이터 run:
 
 ```text
 20260515T114046Z
@@ -51,9 +47,9 @@ latest risk week: 2026-05-11
 PostgreSQL: done
 FastAPI: done
 MLflow: done
-Airflow: smoke done
+Airflow E2E: done
 Docker API: done
-GitHub Actions CI: done
+GitHub Actions CI: added
 ```
 
 ## 주요 실행 포트
@@ -64,19 +60,91 @@ FastAPI container: http://localhost:28000
 Airflow UI: http://localhost:18080
 ```
 
+## Airflow E2E 결과
+
+DAG:
+
+```text
+nhtsa_recall_risk_mvp
+```
+
+DAG run:
+
+```text
+manual__e2e_20260523T000000
+```
+
+결과:
+
+```text
+state: success
+duration: about 7m 27s
+```
+
+전체 task:
+
+```text
+check_project_files: success
+normalize_backfill: success
+build_features_labels: success
+train_baseline: success
+generate_latest_risk_report: success
+load_postgres: success
+log_mlflow: success
+```
+
+상세 문서:
+
+```text
+docs/AIRFLOW_E2E_RUN_RESULTS.md
+```
+
+## 검증된 최종 산출
+
+PostgreSQL:
+
+```text
+complaints: 103440
+recalls: 3018
+weekly_features: 1189569
+training_dataset: 1189569
+latest_risk_scores: 25
+baseline_test_predictions: 293083
+```
+
+API:
+
+```text
+GET /health: 200
+GET /health/db: 200
+GET /risk-scores/latest?limit=3: 200
+```
+
+MLflow:
+
+```text
+run_id: b1a509073be84b19a886b51b53d24efe
+status: FINISHED
+logistic_average_precision: 0.008251
+rule_average_precision: 0.006281
+```
+
 ## 주요 결과 문서
 
 ```text
+docs/PROJECT_OVERVIEW.md
+docs/MVP_SUMMARY.md
 docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
 docs/MLFLOW_CONNECTION_RESULTS.md
 docs/AIRFLOW_DAG_RESULTS.md
+docs/AIRFLOW_E2E_RUN_RESULTS.md
 docs/DOCKER_CI_RESULTS.md
 ```
 
 ## 현재 다음 작업 후보
 
-이제 필수 MLOps scaffold는 한 사이클 완성했다.
+이제 필수 MLOps scaffold는 end-to-end로 검증했다.
 
 다음부터는 둘 중 하나를 선택한다.
 
@@ -98,14 +166,5 @@ feature 개선
 component matching 개선
 label 품질 개선
 MLflow model artifact 정교화
-```
-
-## 선택 작업
-
-Airflow 전체 DAG end-to-end 실행은 아직 하지 않았다.
-
-```text
-현재는 DAG import와 핵심 task smoke test로 orchestration scaffold를 검증했다.
-전체 재실행은 시간 비용이 있으므로 별도 선택 작업으로 둔다.
 ```
 

@@ -13,7 +13,10 @@ MVP data/model cycle: done
 PostgreSQL load: done
 FastAPI read API: done
 MLflow logging: done
-Airflow DAG scaffold: in progress
+Airflow DAG scaffold: done
+Airflow E2E run: done
+Docker API: done
+GitHub Actions CI: added
 ```
 
 ## Quick links
@@ -27,6 +30,7 @@ docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
 docs/MLFLOW_CONNECTION_RESULTS.md
 docs/AIRFLOW_DAG_RESULTS.md
+docs/AIRFLOW_E2E_RUN_RESULTS.md
 docs/DOCKER_CI_RESULTS.md
 ```
 
