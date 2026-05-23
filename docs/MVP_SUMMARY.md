@@ -68,7 +68,7 @@ reports/latest_risk_score_report.md
 | test rows | 293,083 |
 | test positives | 1,611 |
 | rule baseline AP | 0.006281 |
-| logistic baseline AP | 0.008251 |
+| logistic baseline AP | 0.008191 |
 
 ## 평가 결과 해석
 
@@ -88,7 +88,7 @@ Lead time
 
 ```text
 rule AP: 0.006281
-logistic AP: 0.008251
+logistic AP: 0.008191
 ```
 
 하지만 logistic top-k 결과는 좋지 않았다. score가 1.0으로 포화되는 false positive가 있었기 때문에 calibration과 feature 개선이 필요하다.

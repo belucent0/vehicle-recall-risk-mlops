@@ -74,7 +74,8 @@ def collect_params(summary: dict[str, Any]) -> dict[str, Any]:
         "test_min_as_of_date": split["test"]["min_as_of_date"],
         "test_max_as_of_date": split["test"]["max_as_of_date"],
         "logistic_training_sample_rows": sample["row_count"],
-        "model_type": "pure_python_weighted_logistic_baseline",
+        "model_type": summary.get("model_type", "sklearn_logistic_regression_pipeline"),
+        "model_library": summary.get("model_library", "scikit-learn"),
         "label": "next_90d_recall",
     }
 
@@ -121,13 +122,16 @@ def write_model_artifact(
 ) -> Path:
     coefficients = read_csv_dicts(coefficients_path)
     artifact = {
-        "artifact_type": "baseline_logistic_coefficients",
+        "artifact_type": "baseline_model_metadata",
         "created_at_utc": datetime.now(UTC).isoformat(),
         "source_run_id": run_id,
-        "model_type": "pure_python_weighted_logistic_baseline",
+        "model_type": summary.get("model_type", "sklearn_logistic_regression_pipeline"),
+        "model_library": summary.get("model_library", "scikit-learn"),
+        "model_artifact": summary.get("model_artifact"),
         "label": "next_90d_recall",
-        "note": "This artifact records baseline logistic coefficients and metadata. It is not an MLflow pyfunc model.",
+        "note": "This artifact records baseline model metadata and coefficients. The sklearn pipeline is logged separately when available.",
         "metrics": summary["test_metrics"],
+        "model_config": summary.get("model_config", {}),
         "coefficients": [
             {
                 "feature": row["feature"],
@@ -143,6 +147,15 @@ def write_model_artifact(
     return model_path
 
 
+def resolve_project_path(value: str | None) -> Path | None:
+    if not value:
+        return None
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return PROJECT_ROOT / path
+
+
 def log_to_mlflow(
     *,
     tracking_uri: str,
@@ -151,6 +164,7 @@ def log_to_mlflow(
     params: dict[str, Any],
     metrics: dict[str, float],
     artifact_paths: list[Path],
+    sklearn_model_path: Path | None = None,
 ) -> str:
     try:
         import mlflow
@@ -175,6 +189,17 @@ def log_to_mlflow(
         for artifact_path in artifact_paths:
             if artifact_path.exists():
                 mlflow.log_artifact(str(artifact_path))
+
+        if sklearn_model_path and sklearn_model_path.exists():
+            import joblib
+            from mlflow import sklearn as mlflow_sklearn
+
+            loaded = joblib.load(sklearn_model_path)
+            sklearn_model = loaded["pipeline"] if isinstance(loaded, dict) else loaded
+            mlflow_sklearn.log_model(
+                sk_model=sklearn_model,
+                artifact_path="sklearn_model",
+            )
 
         return active_run.info.run_id
 
@@ -218,6 +243,7 @@ def main() -> int:
     report_path = REPORTS_DIR / "backfill_baseline_model_latest.md"
 
     summary = read_json(summary_path)
+    sklearn_model_path = resolve_project_path(summary.get("model_artifact"))
     params = collect_params(summary)
     metrics = collect_metrics(summary)
     model_artifact_path = write_model_artifact(
@@ -232,6 +258,8 @@ def main() -> int:
         model_artifact_path,
         report_path,
     ]
+    if sklearn_model_path and sklearn_model_path.exists():
+        artifact_paths.append(sklearn_model_path)
     if args.log_predictions:
         artifact_paths.append(predictions_path)
 
@@ -242,6 +270,10 @@ def main() -> int:
     print(f"Metrics:         {len(metrics)}")
     print(f"Artifacts:       {len(artifact_paths)}")
     print(f"Model artifact:  {display_path(model_artifact_path)}")
+    print(
+        "Sklearn model:   "
+        f"{display_path(sklearn_model_path) if sklearn_model_path and sklearn_model_path.exists() else 'missing'}"
+    )
     print(f"Log predictions: {args.log_predictions}")
 
     if args.dry_run:
@@ -255,6 +287,7 @@ def main() -> int:
         params=params,
         metrics=metrics,
         artifact_paths=artifact_paths,
+        sklearn_model_path=sklearn_model_path,
     )
 
     mlflow_result_path = processed_run_dir / "mlflow_baseline_run.json"

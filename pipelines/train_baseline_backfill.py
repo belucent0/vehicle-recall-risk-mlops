@@ -21,6 +21,7 @@ from recall_risk.models.baseline import (  # noqa: E402
     evaluate_scores,
     labeled_rows,
     read_csv_rows,
+    save_model_artifact,
     score_rows,
     temporal_train_test_split,
     train_logistic_regression,
@@ -127,7 +128,9 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
         f"- Source run ID: `{summary['source_run_id']}`",
         f"- Built at UTC: `{summary['built_at_utc']}`",
         f"- Split cutoff as-of date: `{summary['split']['cutoff_as_of_date']}`",
+        f"- Model type: `{summary['model_type']}`",
         f"- Logistic train sample rows: `{summary['logistic_training_sample']['row_count']}`",
+        f"- Model artifact: `{summary['model_artifact']}`",
         "",
         "## Split",
         "",
@@ -144,7 +147,12 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
 
     lines.extend(["", "## Test Metrics", ""])
     lines.extend(metric_lines("Rule baseline: baseline_risk_score", summary["test_metrics"]["rule"]))
-    lines.extend(metric_lines("Logistic baseline: downsampled weighted logistic", summary["test_metrics"]["logistic"]))
+    lines.extend(
+        metric_lines(
+            "Logistic baseline: scikit-learn Pipeline + StandardScaler + class_weight=balanced",
+            summary["test_metrics"]["logistic"],
+        )
+    )
 
     lines.extend(
         [
@@ -168,7 +176,9 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
             "",
             "- Smoke test보다 훨씬 큰 test set에서 baseline을 평가했다.",
             "- 이 문제는 positive rate가 매우 낮으므로 accuracy가 아니라 ranking metric을 본다.",
-            "- Logistic baseline은 전체 train set이 아니라 positive 전체 + negative downsampling sample로 학습했다.",
+            "- Logistic baseline은 scikit-learn Pipeline(SimpleImputer, StandardScaler, LogisticRegression)으로 학습했다.",
+            "- 학습 데이터는 positive 전체 + negative downsampling sample을 사용했다.",
+            "- LogisticRegression은 `class_weight='balanced'`를 사용했다.",
             "- 다음 단계에서는 최신 risk score 리포트를 만들고 MVP 결과물을 정리한다.",
         ]
     )
@@ -181,6 +191,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train/evaluate baseline models on backfill dataset.")
     parser.add_argument("--run-id", help="Backfill run id. Defaults to latest processed backfill run.")
     parser.add_argument("--epochs", type=int, default=120)
+    parser.add_argument("--max-iter", type=int, default=1000)
     parser.add_argument("--negative-ratio", type=int, default=20)
     parser.add_argument("--max-train-rows", type=int, default=100_000)
     parser.add_argument("--seed", type=int, default=42)
@@ -209,15 +220,22 @@ def main() -> int:
     )
 
     print(f"Training logistic baseline on {len(logistic_train_rows)} rows...", flush=True)
-    model = train_logistic_regression(logistic_train_rows, epochs=args.epochs)
+    model = train_logistic_regression(
+        logistic_train_rows,
+        epochs=args.epochs,
+        max_iter=args.max_iter,
+        random_state=args.seed,
+    )
 
     print("Scoring test rows...", flush=True)
     test_predictions = score_rows(test_rows, model, "test")
 
     predictions_path = processed_run_dir / "baseline_test_predictions.csv"
     coefficients_path = processed_run_dir / "baseline_logistic_coefficients.csv"
+    model_artifact_path = processed_run_dir / "sklearn_logistic_pipeline.joblib"
     write_csv_rows(predictions_path, test_predictions, PREDICTION_COLUMNS)
     write_csv_rows(coefficients_path, coefficient_rows(model), COEFFICIENT_COLUMNS)
+    save_model_artifact(model, model_artifact_path)
 
     logistic_sample_summary = split_summary(logistic_train_rows)
     summary = {
@@ -226,6 +244,17 @@ def main() -> int:
         "input_dataset": display_path(dataset_path),
         "predictions_csv": display_path(predictions_path),
         "coefficients_csv": display_path(coefficients_path),
+        "model_artifact": display_path(model_artifact_path),
+        "model_type": model.model_type,
+        "model_library": "scikit-learn",
+        "model_config": {
+            "pipeline": ["SimpleImputer", "StandardScaler", "LogisticRegression"],
+            "class_weight": "balanced",
+            "max_iter": max(args.max_iter, args.epochs, 1000),
+            "negative_ratio": args.negative_ratio,
+            "max_train_rows": args.max_train_rows,
+            "seed": args.seed,
+        },
         "split": {
             "cutoff_as_of_date": cutoff_date,
             "train": split_summary(train_rows),
@@ -255,10 +284,10 @@ def main() -> int:
     print(f"Rule AP:          {summary['test_metrics']['rule']['average_precision']}")
     print(f"Logistic AP:      {summary['test_metrics']['logistic']['average_precision']}")
     print(f"Wrote:            {display_path(predictions_path)}")
+    print(f"Wrote:            {display_path(model_artifact_path)}")
     print(f"Wrote:            {display_path(report_path)}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

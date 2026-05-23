@@ -194,9 +194,9 @@ sqlite:////opt/airflow/project/mlflow_airflow.db
 최근 검증된 run:
 
 ```text
-run_id: b1a509073be84b19a886b51b53d24efe
+run_id: 7a669b81e7c84e40a9495dfa46522162
 status: FINISHED
-logistic_average_precision: 0.008251
+logistic_average_precision: 0.008191
 rule_average_precision: 0.006281
 ```
 
@@ -218,4 +218,3 @@ rule_average_precision: 0.006281
 4. MLflow model registry 또는 artifact store 정리
 5. FastAPI OpenAPI 문서와 example response 정리
 ```
-

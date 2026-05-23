@@ -28,6 +28,7 @@ P4 Airflow DAG scaffold/smoke: done
 P5 Docker/CI 정리: done
 P6 Airflow 전체 DAG E2E 실행: done
 P7 포트폴리오 브리프/로컬 실행 가이드: done
+Q2-1 scikit-learn baseline 교체 및 MLflow sklearn model logging: done
 ```
 
 ## 완료된 MLOps 포트폴리오화 작업
@@ -41,6 +42,7 @@ P7 포트폴리오 브리프/로컬 실행 가이드: done
 | P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | done |
 | P6 | Airflow 전체 DAG E2E 실행 | orchestration end-to-end 검증 | done |
 | P7 | 포트폴리오 브리프/로컬 실행 가이드 | 공개 설명 자료와 재실행 절차 정리 | done |
+| Q2-1 | scikit-learn baseline 교체 | 표준 ML workflow와 model artifact logging 확보 | done |
 
 ## 다음 작업 후보
 
@@ -68,17 +70,19 @@ Mermaid 아키텍처 다이어그램 추가: done
 목표:
 
 ```text
-현재 pure Python baseline을 더 일반적인 ML workflow로 개선한다.
+pure Python baseline을 표준 ML workflow로 교체했고, 이제 모델 품질을 개선한다.
 ```
 
 작업:
 
 ```text
-scikit-learn LogisticRegression baseline
-sklearn Pipeline + StandardScaler
-class_weight='balanced'
-joblib artifact 저장
-MLflow sklearn model logging
+scikit-learn LogisticRegression baseline: done
+sklearn Pipeline + StandardScaler: done
+class_weight='balanced': done
+joblib artifact 저장: done
+MLflow sklearn model logging: done
+calibration / top-K ranking 개선: pending
+tree-based model 비교: pending
 ```
 
 ### Q3. 데이터/label 품질 개선

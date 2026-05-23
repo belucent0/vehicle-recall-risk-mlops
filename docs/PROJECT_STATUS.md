@@ -18,6 +18,7 @@ MLflow baseline logging verified
 Airflow DAG end-to-end run verified
 Dockerized API verified
 GitHub Actions CI added
+scikit-learn baseline verified
 ```
 
 ## 핵심 결과
@@ -37,7 +38,7 @@ label-ready rows: 1172332
 positive rows: 4348
 test positives: 1611
 rule AP: 0.006281
-logistic AP: 0.008251
+logistic AP: 0.008191
 latest risk week: 2026-05-11
 ```
 
@@ -51,6 +52,7 @@ Airflow E2E: done
 Docker API: done
 GitHub Actions CI: added
 Portfolio brief/runbook: done
+scikit-learn baseline: done
 ```
 
 ## 주요 실행 포트
@@ -72,14 +74,14 @@ nhtsa_recall_risk_mvp
 DAG run:
 
 ```text
-manual__e2e_20260523T000000
+manual__sklearn_20260523T124600
 ```
 
 결과:
 
 ```text
 state: success
-duration: about 7m 27s
+duration: about 6m 34s
 ```
 
 전체 task:
@@ -124,9 +126,9 @@ GET /risk-scores/latest?limit=3: 200
 MLflow:
 
 ```text
-run_id: b1a509073be84b19a886b51b53d24efe
+run_id: 7a669b81e7c84e40a9495dfa46522162
 status: FINISHED
-logistic_average_precision: 0.008251
+logistic_average_precision: 0.008191
 rule_average_precision: 0.006281
 ```
 
@@ -143,6 +145,7 @@ docs/AIRFLOW_E2E_RUN_RESULTS.md
 docs/DOCKER_CI_RESULTS.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md
+docs/BACKFILL_BASELINE_MODEL_RESULTS.md
 ```
 
 ## 현재 다음 작업 후보
@@ -154,8 +157,9 @@ docs/RUNBOOK.md
 ### A. 모델/데이터 품질 개선
 
 ```text
-scikit-learn baseline 교체
-feature 개선
+calibration 개선
+top-K ranking 개선
+tree-based model 비교
 component matching 개선
 label 누수/정합성 추가 검증
 MLflow model artifact 정교화

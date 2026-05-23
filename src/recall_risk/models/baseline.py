@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import csv
-import math
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
+
+import pandas as pd
+from sklearn.dummy import DummyClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 NUMERIC_FEATURES = [
@@ -46,28 +52,31 @@ COEFFICIENT_COLUMNS = ["feature", "coefficient"]
 
 
 @dataclass
-class Standardizer:
-    means: list[float]
-    stds: list[float]
-
-    def transform_one(self, values: list[float]) -> list[float]:
-        return [
-            (value - mean) / std if std > 0 else 0.0
-            for value, mean, std in zip(values, self.means, self.stds, strict=True)
-        ]
-
-
-@dataclass
 class LogisticModel:
-    weights: list[float]
-    intercept: float
-    standardizer: Standardizer
+    pipeline: Pipeline
     features: list[str]
+    model_type: str = "sklearn_logistic_regression_pipeline"
+
+    def feature_frame(self, rows: list[dict[str, Any]]) -> pd.DataFrame:
+        return rows_to_feature_frame(rows, self.features)
+
+    def predict_proba_rows(self, rows: list[dict[str, Any]]) -> list[float]:
+        if not rows:
+            return []
+
+        probabilities = self.pipeline.predict_proba(self.feature_frame(rows))
+        classifier = self.pipeline.named_steps["classifier"]
+        classes = list(getattr(classifier, "classes_", []))
+
+        if 1 in classes:
+            positive_index = classes.index(1)
+            return [float(value) for value in probabilities[:, positive_index]]
+        if classes == [1]:
+            return [1.0] * len(rows)
+        return [0.0] * len(rows)
 
     def predict_proba_one(self, row: dict[str, Any]) -> float:
-        x = self.standardizer.transform_one([parse_float(row.get(name)) for name in self.features])
-        logit = self.intercept + sum(weight * value for weight, value in zip(self.weights, x, strict=True))
-        return sigmoid(logit)
+        return self.predict_proba_rows([row])[0]
 
 
 def parse_float(value: Any) -> float:
@@ -85,14 +94,6 @@ def parse_int(value: Any) -> int:
 
 def parse_date(value: str) -> datetime:
     return datetime.strptime(value, "%Y-%m-%d")
-
-
-def sigmoid(value: float) -> float:
-    if value >= 0:
-        z = math.exp(-value)
-        return 1 / (1 + z)
-    z = math.exp(value)
-    return z / (1 + z)
 
 
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -156,76 +157,65 @@ def temporal_train_test_split(
     return train_rows, test_rows, cutoff_date
 
 
-def fit_standardizer(rows: list[dict[str, Any]], features: list[str]) -> Standardizer:
-    matrix = [[parse_float(row.get(name)) for name in features] for row in rows]
-    if not matrix:
-        return Standardizer([0.0] * len(features), [1.0] * len(features))
-
-    means = []
-    stds = []
-    for col_idx in range(len(features)):
-        values = [row[col_idx] for row in matrix]
-        avg = sum(values) / len(values)
-        if len(values) < 2:
-            std = 1.0
-        else:
-            variance = sum((value - avg) ** 2 for value in values) / (len(values) - 1)
-            std = math.sqrt(variance) or 1.0
-        means.append(avg)
-        stds.append(std)
-    return Standardizer(means, stds)
+def rows_to_feature_frame(rows: list[dict[str, Any]], features: list[str]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [{name: parse_float(row.get(name)) for name in features} for row in rows],
+        columns=features,
+    )
 
 
 def train_logistic_regression(
     rows: list[dict[str, Any]],
     features: list[str] | None = None,
     epochs: int = 800,
-    learning_rate: float = 0.05,
     l2: float = 0.01,
+    learning_rate: float = 0.05,
+    max_iter: int | None = None,
+    random_state: int = 42,
 ) -> LogisticModel:
+    """Fit a scikit-learn logistic baseline.
+
+    `epochs` and `learning_rate` remain in the signature for backward compatibility
+    with the earlier pure-Python baseline CLI. The current implementation uses
+    scikit-learn's `LogisticRegression`; `epochs` is treated as a lower bound for
+    `max_iter`.
+    """
+
     features = features or NUMERIC_FEATURES
-    standardizer = fit_standardizer(rows, features)
-    x_matrix = [
-        standardizer.transform_one([parse_float(row.get(name)) for name in features])
-        for row in rows
-    ]
     y = [parse_int(row["next_90d_recall"]) for row in rows]
 
-    pos_count = sum(y)
-    neg_count = len(y) - pos_count
-    if pos_count == 0 or neg_count == 0:
-        # Degenerate fallback. The intercept is the empirical log-odds with smoothing.
-        p = (pos_count + 1) / (len(y) + 2)
-        return LogisticModel([0.0] * len(features), math.log(p / (1 - p)), standardizer, features)
+    if not y:
+        classifier = DummyClassifier(strategy="constant", constant=0)
+        x = rows_to_feature_frame([{}], features)
+        classifier.fit(x, [0])
+        pipeline = Pipeline([("classifier", classifier)])
+        return LogisticModel(pipeline=pipeline, features=features, model_type="sklearn_dummy_classifier")
 
-    # Cap class weights to avoid unstable updates in tiny rare-event samples.
-    pos_weight = min(50.0, len(y) / (2 * pos_count))
-    neg_weight = min(50.0, len(y) / (2 * neg_count))
+    x = rows_to_feature_frame(rows, features)
+    effective_max_iter = max(max_iter or 0, epochs, 1000)
 
-    weights = [0.0] * len(features)
-    intercept = math.log((pos_count + 1) / (neg_count + 1))
+    if len(set(y)) < 2:
+        classifier = DummyClassifier(strategy="constant", constant=y[0])
+        pipeline = Pipeline([("classifier", classifier)])
+    else:
+        c_value = 1.0 / l2 if l2 > 0 else 1.0
+        classifier = LogisticRegression(
+            class_weight="balanced",
+            C=c_value,
+            max_iter=effective_max_iter,
+            solver="lbfgs",
+            random_state=random_state,
+        )
+        pipeline = Pipeline(
+            [
+                ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
+                ("scaler", StandardScaler()),
+                ("classifier", classifier),
+            ]
+        )
 
-    for _ in range(epochs):
-        grad_weights = [0.0] * len(features)
-        grad_intercept = 0.0
-        total_weight = 0.0
-
-        for x, target in zip(x_matrix, y, strict=True):
-            pred = sigmoid(intercept + sum(w * v for w, v in zip(weights, x, strict=True)))
-            sample_weight = pos_weight if target == 1 else neg_weight
-            error = sample_weight * (pred - target)
-            total_weight += sample_weight
-            grad_intercept += error
-            for idx, value in enumerate(x):
-                grad_weights[idx] += error * value
-
-        denom = total_weight or len(y)
-        intercept -= learning_rate * (grad_intercept / denom)
-        for idx in range(len(weights)):
-            grad = (grad_weights[idx] / denom) + l2 * weights[idx]
-            weights[idx] -= learning_rate * grad
-
-    return LogisticModel(weights, intercept, standardizer, features)
+    pipeline.fit(x, y)
+    return LogisticModel(pipeline=pipeline, features=features)
 
 
 def score_rows(
@@ -234,11 +224,12 @@ def score_rows(
     split_name: str,
 ) -> list[dict[str, Any]]:
     scored = []
-    for row in rows:
+    logistic_scores = model.predict_proba_rows(rows)
+    for row, logistic_score in zip(rows, logistic_scores, strict=True):
         output = dict(row)
         output["split"] = split_name
         output["rule_score"] = parse_float(row.get("baseline_risk_score"))
-        output["logistic_score"] = round(model.predict_proba_one(row), 8)
+        output["logistic_score"] = round(logistic_score, 8)
         scored.append(output)
     return scored
 
@@ -300,10 +291,27 @@ def evaluate_scores(
 
 
 def coefficient_rows(model: LogisticModel) -> list[dict[str, Any]]:
-    rows = [{"feature": "__intercept__", "coefficient": round(model.intercept, 8)}]
+    classifier = model.pipeline.named_steps["classifier"]
+    intercept = getattr(classifier, "intercept_", [0.0])
+    coefficients = getattr(classifier, "coef_", [[0.0] * len(model.features)])
+
+    rows = [{"feature": "__intercept__", "coefficient": round(float(intercept[0]), 8)}]
     rows.extend(
-        {"feature": feature, "coefficient": round(weight, 8)}
-        for feature, weight in zip(model.features, model.weights, strict=True)
+        {"feature": feature, "coefficient": round(float(weight), 8)}
+        for feature, weight in zip(model.features, coefficients[0], strict=True)
     )
     return rows
 
+
+def save_model_artifact(model: LogisticModel, path: Path) -> Path:
+    import joblib
+
+    payload = {
+        "artifact_type": "sklearn_logistic_pipeline",
+        "model_type": model.model_type,
+        "features": model.features,
+        "pipeline": model.pipeline,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(payload, path)
+    return path

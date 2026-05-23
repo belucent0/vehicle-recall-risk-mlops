@@ -155,3 +155,38 @@ Docker API
 GitHub Actions CI scaffold
 ```
 
+## 추가 검증: scikit-learn baseline 전환 후 재실행
+
+작성일: 2026-05-23 KST
+
+scikit-learn Pipeline 기반 baseline으로 교체한 뒤 같은 DAG를 다시 실행했다.
+
+```text
+DAG run: manual__sklearn_20260523T124600
+state: success
+execution_date: 2026-05-23T12:48:33+00:00
+end_date: 2026-05-23T12:55:07+00:00
+duration: about 6m 34s
+```
+
+전체 task:
+
+```text
+check_project_files: success
+normalize_backfill: success
+build_features_labels: success
+train_baseline: success
+generate_latest_risk_report: success
+load_postgres: success
+log_mlflow: success
+```
+
+MLflow:
+
+```text
+run_id: 7a669b81e7c84e40a9495dfa46522162
+logistic_average_precision: 0.008191
+rule_average_precision: 0.006281
+```
+
+이번 재실행으로 `train_baseline`과 `log_mlflow`가 scikit-learn model artifact까지 포함해 Airflow에서 end-to-end로 동작함을 확인했다.

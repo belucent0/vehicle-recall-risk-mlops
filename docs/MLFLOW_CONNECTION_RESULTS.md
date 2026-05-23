@@ -211,3 +211,37 @@ Airflow DAG에서 MLflow logging 호출
 P3 MLflow 연결은 완료했다.
 
 다음 작업은 **P4 Airflow DAG 전환**이다.
+
+## 추가 검증: scikit-learn model logging
+
+작성일: 2026-05-23 KST
+
+baseline을 scikit-learn Pipeline으로 교체한 뒤 `pipelines/log_baseline_mlflow.py`에서 sklearn model artifact도 함께 기록하도록 변경했다.
+
+새로 기록하는 artifact:
+
+```text
+sklearn_logistic_pipeline.joblib
+MLflow sklearn model artifact: sklearn_model
+baseline metadata json
+baseline_model_summary.json
+baseline_logistic_coefficients.csv
+```
+
+로컬 MLflow run:
+
+```text
+tracking_uri: sqlite:///C:/timblo/nhtsa-recall-risk-mlops/mlflow.db
+run_id: 0292a117bf854ce693d1720b1c76078d
+status: FINISHED
+logistic_average_precision: 0.008191
+rule_average_precision: 0.006281
+```
+
+Airflow MLflow run:
+
+```text
+tracking_uri: sqlite:////opt/airflow/project/mlflow_airflow.db
+run_id: 7a669b81e7c84e40a9495dfa46522162
+status: FINISHED
+```

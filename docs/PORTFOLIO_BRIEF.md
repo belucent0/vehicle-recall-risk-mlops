@@ -142,7 +142,7 @@ normalize_backfill
 | metric | value |
 |---|---:|
 | rule average precision | 0.006281 |
-| logistic average precision | 0.008251 |
+| logistic average precision | 0.008191 |
 
 최신 risk week:
 
@@ -164,7 +164,7 @@ API 예시 결과:
 |---|---|
 | Data source | NHTSA public APIs |
 | Data processing | Python, pandas |
-| ML baseline | custom baseline logic, scikit-learn-compatible evaluation direction |
+| ML baseline | scikit-learn Pipeline, LogisticRegression |
 | Storage | PostgreSQL |
 | Serving | FastAPI |
 | Experiment tracking | MLflow |
@@ -206,8 +206,8 @@ PostgreSQL schema, FastAPI read API, Docker Compose, CI, Airflow orchestration�
 우선순위가 높은 순서:
 
 ```text
-1. scikit-learn Pipeline 기반 LogisticRegression baseline으로 교체
-2. MLflow sklearn model artifact logging
+1. calibration / top-K ranking 개선
+2. LightGBM/XGBoost 같은 tree-based model 비교
 3. collect_backfill / incremental collector를 Airflow DAG에 추가
 4. CI에서 Docker build 검증 추가
 5. component normalization / recall matching 품질 개선
@@ -221,4 +221,3 @@ Vehicle Recall Risk MLOps는 NHTSA 공개 데이터를 사용해 차량 리콜 �
 PostgreSQL 적재, FastAPI serving, MLflow tracking, Airflow orchestration,
 Docker 실행, GitHub Actions CI까지 연결한 end-to-end MLOps MVP입니다.
 ```
-

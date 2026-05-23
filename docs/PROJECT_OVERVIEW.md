@@ -79,7 +79,8 @@ MVP data/model cycle: done
 PostgreSQL load: done
 FastAPI read API: done
 MLflow logging: done
-Airflow DAG scaffold: in progress
+Airflow DAG E2E: done
+scikit-learn baseline: done
 ```
 
 ## 주요 결과
@@ -98,7 +99,7 @@ weekly feature rows: 1189569
 label-ready rows: 1172332
 positive rows: 4348
 rule AP: 0.006281
-logistic AP: 0.008251
+logistic AP: 0.008191
 latest risk week: 2026-05-11
 ```
 
@@ -140,4 +141,3 @@ docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
 docs/MLFLOW_CONNECTION_RESULTS.md
 ```
-

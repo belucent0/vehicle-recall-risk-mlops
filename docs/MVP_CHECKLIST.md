@@ -259,7 +259,7 @@ train positives: 2737
 test rows: 293083
 test positives: 1611
 rule AP: 0.006281
-logistic AP: 0.008251
+logistic AP: 0.008191
 ```
 
 ### 성공 기준 체크

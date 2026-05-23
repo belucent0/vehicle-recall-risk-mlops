@@ -19,6 +19,7 @@ from recall_risk.models.baseline import (  # noqa: E402
     evaluate_scores,
     labeled_rows,
     read_csv_rows,
+    save_model_artifact,
     score_rows,
     temporal_train_test_split,
     train_logistic_regression,
@@ -41,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train/evaluate baseline recall-risk models.")
     parser.add_argument("--run-id", help="Smoke test run id. Defaults to latest processed run.")
     parser.add_argument("--epochs", type=int, default=800)
+    parser.add_argument("--max-iter", type=int, default=1000)
     return parser.parse_args()
 
 
@@ -72,6 +74,8 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
         f"- Source run ID: `{summary['source_run_id']}`",
         f"- Built at UTC: `{summary['built_at_utc']}`",
         f"- Split cutoff as-of date: `{summary['split']['cutoff_as_of_date']}`",
+        f"- Model type: `{summary['model_type']}`",
+        f"- Model artifact: `{summary['model_artifact']}`",
         "",
         "## Split",
         "",
@@ -96,7 +100,7 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
             "",
             "- This is still a smoke-test-scale dataset.",
             "- The rule baseline uses `baseline_risk_score` directly.",
-            "- The logistic baseline is a pure-Python weighted logistic regression using numeric features only.",
+            "- The logistic baseline is a scikit-learn Pipeline using numeric features only.",
             "- Accuracy is intentionally omitted because the task is a rare-event ranking problem.",
         ]
     )
@@ -128,16 +132,18 @@ def main() -> int:
     rows = labeled_rows(read_csv_rows(dataset_path))
     train_rows, test_rows, cutoff_date = temporal_train_test_split(rows)
 
-    model = train_logistic_regression(train_rows, epochs=args.epochs)
+    model = train_logistic_regression(train_rows, epochs=args.epochs, max_iter=args.max_iter)
     train_predictions = score_rows(train_rows, model, "train")
     test_predictions = score_rows(test_rows, model, "test")
     all_predictions = train_predictions + test_predictions
 
     predictions_path = processed_run_dir / "baseline_predictions.csv"
     coefficients_path = processed_run_dir / "baseline_logistic_coefficients.csv"
+    model_artifact_path = processed_run_dir / "sklearn_logistic_pipeline.joblib"
 
     write_csv_rows(predictions_path, all_predictions, PREDICTION_COLUMNS)
     write_csv_rows(coefficients_path, coefficient_rows(model), COEFFICIENT_COLUMNS)
+    save_model_artifact(model, model_artifact_path)
 
     summary = {
         "source_run_id": run_id,
@@ -145,6 +151,9 @@ def main() -> int:
         "input_dataset": str(dataset_path.relative_to(PROJECT_ROOT)),
         "predictions_csv": str(predictions_path.relative_to(PROJECT_ROOT)),
         "coefficients_csv": str(coefficients_path.relative_to(PROJECT_ROOT)),
+        "model_artifact": str(model_artifact_path.relative_to(PROJECT_ROOT)),
+        "model_type": model.model_type,
+        "model_library": "scikit-learn",
         "split": {
             "cutoff_as_of_date": cutoff_date,
             "train": split_summary(train_rows),
@@ -170,10 +179,10 @@ def main() -> int:
     print(f"Rule AP:          {summary['test_metrics']['rule']['average_precision']}")
     print(f"Logistic AP:      {summary['test_metrics']['logistic']['average_precision']}")
     print(f"Wrote:            {predictions_path.relative_to(PROJECT_ROOT)}")
+    print(f"Wrote:            {model_artifact_path.relative_to(PROJECT_ROOT)}")
     print(f"Wrote:            {report_path.relative_to(PROJECT_ROOT)}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

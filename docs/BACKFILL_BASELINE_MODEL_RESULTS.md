@@ -1,47 +1,99 @@
 # Backfill Baseline Model Results
 
-작성일: 2026-05-15 KST
+작성일: 2026-05-23 KST
 
 ## 할 작업
 
 ```text
-M8. Backfill baseline 재평가
+Q2-1. pure Python logistic baseline을 scikit-learn baseline workflow로 교체
 ```
 
 ## 왜 하는가
 
-smoke test에서는 positive row가 45개뿐이라 모델 평가가 거의 의미 없었다. M7에서 positive row가 4,348개로 늘었으므로 MVP dataset 기준으로 baseline을 다시 평가한다.
+기존 baseline은 직접 구현한 weighted logistic regression이었다. MVP 검증에는 충분했지만, 포트폴리오와 MLOps 관점에서는 일반적인 ML workflow와 거리가 있었다.
 
-## 무엇을 어떻게 했는가
-
-다음 스크립트를 만들었다.
+이번 단계의 목적은 다음과 같다.
 
 ```text
+1. scikit-learn Pipeline 기반 baseline으로 교체한다.
+2. StandardScaler / LogisticRegression / class_weight='balanced'를 명시한다.
+3. joblib model artifact를 생성한다.
+4. MLflow에 sklearn model artifact를 기록할 수 있게 한다.
+5. Airflow E2E DAG에서 새 baseline이 끝까지 실행되는지 확인한다.
+```
+
+## 구현 파일
+
+```text
+src/recall_risk/models/baseline.py
 pipelines/train_baseline_backfill.py
+pipelines/train_baseline_sample.py
+pipelines/log_baseline_mlflow.py
+infra/airflow/requirements.txt
+tests/test_baseline_model.py
 ```
 
-평가 방식:
+## 모델 구성
+
+현재 logistic baseline:
 
 ```text
-1. training_dataset_labeled_only.csv 로드
-2. 시간 기준 train/test split
-3. rule baseline 평가: baseline_risk_score
-4. logistic baseline 평가: positive 전체 + negative downsampling
-5. Precision@K, Average Precision, Brier score 계산
+scikit-learn Pipeline
+-> SimpleImputer(strategy='constant', fill_value=0.0)
+-> StandardScaler
+-> LogisticRegression(class_weight='balanced', solver='lbfgs', max_iter=1000)
 ```
 
-전체 train row가 많기 때문에 logistic은 모든 negative를 쓰지 않았다.
+학습 데이터:
 
 ```text
+positive 전체
+negative downsampling
 negative_ratio=20
 max_train_rows=100000
-actual logistic train sample rows=57477
+actual train sample rows=57477
+```
+
+features:
+
+```text
+complaint_count
+crash_count
+fire_count
+injury_count
+death_count
+severe_complaint_count
+rolling_4w_complaint_mean_prior
+rolling_8w_complaint_mean_prior
+rolling_8w_complaint_std_prior
+complaint_spike_z
+baseline_risk_score
 ```
 
 ## 실행 명령
 
+학습/평가:
+
 ```bash
-python pipelines/train_baseline_backfill.py --run-id 20260515T114046Z --epochs 120 --negative-ratio 20 --max-train-rows 100000
+python pipelines/train_baseline_backfill.py --run-id 20260515T114046Z --max-iter 1000 --negative-ratio 20 --max-train-rows 100000
+```
+
+MLflow 기록:
+
+```bash
+python pipelines/log_baseline_mlflow.py --run-id 20260515T114046Z
+```
+
+PostgreSQL 재적재:
+
+```bash
+python pipelines/load_postgres.py --run-id 20260515T114046Z --apply-schema --truncate
+```
+
+Airflow E2E 재검증:
+
+```bash
+docker compose exec airflow-webserver airflow dags trigger nhtsa_recall_risk_mvp --run-id manual__sklearn_20260523T124600
 ```
 
 ## 결과 파일
@@ -50,9 +102,12 @@ python pipelines/train_baseline_backfill.py --run-id 20260515T114046Z --epochs 1
 data/processed/backfill/20260515T114046Z/baseline_test_predictions.csv
 data/processed/backfill/20260515T114046Z/baseline_logistic_coefficients.csv
 data/processed/backfill/20260515T114046Z/baseline_model_summary.json
+data/processed/backfill/20260515T114046Z/sklearn_logistic_pipeline.joblib
 reports/backfill_baseline_model_latest.md
 docs/BACKFILL_BASELINE_MODEL_RESULTS.md
 ```
+
+`data/`, `models/`, `reports/`, `mlflow*.db`는 runtime artifact이므로 git에는 포함하지 않는다.
 
 ## Split
 
@@ -64,57 +119,115 @@ Split cutoff:
 
 | Split | Rows | Positives | Positive rate | Date range |
 |---|---:|---:|---:|---|
-| train | 879249 | 2737 | 0.003113 | 2014-05-25 ~ 2024-04-21 |
-| test | 293083 | 1611 | 0.005497 | 2024-04-21 ~ 2026-02-08 |
+| train | 879,249 | 2,737 | 0.003113 | 2014-05-25 ~ 2024-04-21 |
+| test | 293,083 | 1,611 | 0.005497 | 2024-04-21 ~ 2026-02-08 |
 
 ## Test metrics
 
-### Rule baseline
-
-| Metric | Value |
-|---|---:|
-| Average precision | 0.006281 |
-| Brier score | 0.240245 |
-| Precision@25 | 0.08 |
-| Recall@25 | 0.001241 |
-| Precision@50 | 0.08 |
-| Recall@50 | 0.002483 |
-| Precision@100 | 0.04 |
-| Recall@100 | 0.002483 |
-
-### Logistic baseline
-
-| Metric | Value |
-|---|---:|
-| Average precision | 0.008251 |
-| Brier score | 0.103041 |
-| Precision@25 | 0.0 |
-| Precision@50 | 0.0 |
-| Precision@100 | 0.0 |
+| model | Average precision | Brier score | Precision@25 | Precision@50 | Precision@100 |
+|---|---:|---:|---:|---:|---:|
+| rule baseline | 0.006281 | 0.240245 | 0.080000 | 0.080000 | 0.040000 |
+| sklearn logistic baseline | 0.008191 | 0.236554 | 0.000000 | 0.000000 | 0.000000 |
 
 ## 해석
 
-1. Logistic의 Average Precision은 rule baseline보다 약간 높다.
-2. 하지만 Top-K에서는 logistic이 좋지 않다. 상위 score가 false positive에 몰렸다.
-3. Logistic score가 1.0으로 포화되는 케이스가 있어 calibration이 좋지 않다.
-4. 현재 모델은 "최종 모델"이 아니라 MVP baseline이다.
-5. 그래도 smoke test보다 훨씬 의미 있는 평가가 가능해졌다.
+1. Logistic baseline의 Average Precision은 rule baseline보다 약간 높다.
+2. 하지만 Top-K 성능은 여전히 나쁘다. 상위 logistic score가 false positive에 몰린다.
+3. score가 1.0에 가깝게 포화되는 케이스가 있으므로 calibration이 좋지 않다.
+4. 따라서 현재 모델은 "최종 모델"이 아니라 MLOps 파이프라인 검증용 baseline이다.
+5. 이번 단계의 핵심 성과는 성능 개선보다 **표준 ML workflow 전환과 artifact 추적 가능성 확보**다.
+
+## MLflow 결과
+
+로컬 MLflow run:
+
+```text
+tracking_uri: sqlite:///C:/timblo/nhtsa-recall-risk-mlops/mlflow.db
+run_id: 0292a117bf854ce693d1720b1c76078d
+status: FINISHED
+```
+
+Airflow MLflow run:
+
+```text
+tracking_uri: sqlite:////opt/airflow/project/mlflow_airflow.db
+run_id: 7a669b81e7c84e40a9495dfa46522162
+status: FINISHED
+```
+
+MLflow에 기록한 것:
+
+```text
+metrics 45개
+baseline_model_summary.json
+baseline_logistic_coefficients.csv
+baseline metadata json
+sklearn_logistic_pipeline.joblib
+MLflow sklearn model artifact
+```
+
+## Airflow E2E 재검증
+
+DAG:
+
+```text
+nhtsa_recall_risk_mvp
+```
+
+DAG run:
+
+```text
+manual__sklearn_20260523T124600
+```
+
+결과:
+
+```text
+state: success
+execution_date: 2026-05-23T12:48:33+00:00
+end_date: 2026-05-23T12:55:07+00:00
+duration: about 6m 34s
+```
+
+전체 task:
+
+```text
+check_project_files: success
+normalize_backfill: success
+build_features_labels: success
+train_baseline: success
+generate_latest_risk_report: success
+load_postgres: success
+log_mlflow: success
+```
+
+## PostgreSQL / API 확인
+
+PostgreSQL:
+
+```text
+baseline_test_predictions: 293083
+baseline_logistic_coefficients: 12
+```
+
+FastAPI:
+
+```text
+GET /health/db: 200
+GET /risk-scores/latest?limit=3: 200
+```
 
 ## 결정
 
-M8은 완료로 본다.
+scikit-learn baseline 교체는 완료로 본다.
 
-다음 단계에서는 최신 week 기준 risk score 리포트를 MVP 산출물로 정리한다.
-
-## 다음 작업
+다음 모델 개선은 다음 중 하나다.
 
 ```text
-M9. 최신 risk score 리포트 생성
-```
-
-목표:
-
-```text
-latest_risk_scores.csv를 사람이 읽을 수 있는 markdown report로 정리한다.
+1. calibration 개선
+2. top-K ranking 개선
+3. component/make/model matching 품질 개선
+4. LightGBM/XGBoost 같은 tree-based model 비교
+5. label leakage/temporal validation 추가 검증
 ```
 
