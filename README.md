@@ -25,6 +25,8 @@ GitHub Actions CI: added
 docs/PROJECT_OVERVIEW.md
 docs/PROJECT_STATUS.md
 docs/BACKLOG.md
+docs/PORTFOLIO_BRIEF.md
+docs/RUNBOOK.md
 docs/MVP_SUMMARY.md
 docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md

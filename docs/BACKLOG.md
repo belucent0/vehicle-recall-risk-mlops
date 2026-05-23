@@ -27,6 +27,7 @@ P3 MLflow 연결: done
 P4 Airflow DAG scaffold/smoke: done
 P5 Docker/CI 정리: done
 P6 Airflow 전체 DAG E2E 실행: done
+P7 포트폴리오 브리프/로컬 실행 가이드: done
 ```
 
 ## 완료된 MLOps 포트폴리오화 작업
@@ -39,6 +40,7 @@ P6 Airflow 전체 DAG E2E 실행: done
 | P4 | Airflow DAG 전환 | pipeline orchestration scaffold/smoke | done |
 | P5 | Docker/CI 정리 | 실행성과 자동 검증 강화 | done |
 | P6 | Airflow 전체 DAG E2E 실행 | orchestration end-to-end 검증 | done |
+| P7 | 포트폴리오 브리프/로컬 실행 가이드 | 공개 설명 자료와 재실행 절차 정리 | done |
 
 ## 다음 작업 후보
 
@@ -53,11 +55,12 @@ P6 Airflow 전체 DAG E2E 실행: done
 작업:
 
 ```text
-README 정식 개편
-docs/PORTFOLIO_BRIEF.md 작성
-Mermaid 아키텍처 다이어그램 추가
-실행 순서 정리
-기술적 tradeoff 정리
+README 정식 개편: pending
+docs/PORTFOLIO_BRIEF.md 작성: done
+docs/RUNBOOK.md 작성: done
+Mermaid 아키텍처 다이어그램 추가: done
+실행 순서 정리: done
+기술적 tradeoff 정리: done
 ```
 
 ### Q2. 모델 품질 개선
@@ -102,4 +105,3 @@ investigations/manufacturer communications 추가 검토
 2. 현재 Airflow E2E는 기존 raw backfill 데이터를 기준으로 재처리한다.
 3. GitHub Actions 원격 실행 green 여부는 GitHub에서 별도 확인이 필요하다.
 ```
-

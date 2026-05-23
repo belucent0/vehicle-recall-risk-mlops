@@ -50,6 +50,7 @@ MLflow: done
 Airflow E2E: done
 Docker API: done
 GitHub Actions CI: added
+Portfolio brief/runbook: done
 ```
 
 ## 주요 실행 포트
@@ -140,31 +141,31 @@ docs/MLFLOW_CONNECTION_RESULTS.md
 docs/AIRFLOW_DAG_RESULTS.md
 docs/AIRFLOW_E2E_RUN_RESULTS.md
 docs/DOCKER_CI_RESULTS.md
+docs/PORTFOLIO_BRIEF.md
+docs/RUNBOOK.md
 ```
 
 ## 현재 다음 작업 후보
 
-이제 필수 MLOps scaffold는 end-to-end로 검증했다.
+이제 필수 MLOps scaffold와 공개 설명용 문서 초안은 end-to-end로 정리했다.
 
 다음부터는 둘 중 하나를 선택한다.
 
-### A. 포트폴리오 정리
-
-```text
-README 정식 개편
-아키텍처 다이어그램
-docs/PORTFOLIO_BRIEF.md 작성
-실행 방법 정리
-한계와 개선 계획 정리
-```
-
-### B. 모델/데이터 품질 개선
+### A. 모델/데이터 품질 개선
 
 ```text
 scikit-learn baseline 교체
 feature 개선
 component matching 개선
-label 품질 개선
+label 누수/정합성 추가 검증
 MLflow model artifact 정교화
 ```
 
+### B. 재현성/운영성 개선
+
+```text
+clean clone에서 small sample E2E 가능하게 fixture 추가
+collect_backfill/incremental collector Airflow DAG 분리
+CI에서 Docker build 검증 추가
+GitHub Actions 원격 green 확인
+```
