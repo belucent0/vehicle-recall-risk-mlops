@@ -172,7 +172,7 @@ warning은 기존 pandas `FutureWarning`이며 이번 Docker/CI 작업과 직접
 
 ```text
 workflow: CI
-run: 26384052670
+run: 26410440597
 conclusion: success
 ```
 

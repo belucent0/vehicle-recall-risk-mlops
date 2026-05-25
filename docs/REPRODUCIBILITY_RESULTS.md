@@ -182,8 +182,8 @@ CI가 확인하는 것:
 workflow: CI
 status: completed
 conclusion: success
-head_sha: 3a57aea01d47cee5b9bc060616a1199d7ca4f5a6
-url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/26383993823
+head_sha: c2ca0edc1e98cff658cd00b0bfe5c4a59ecb5237
+url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/26410440597
 ```
 
 ## 현재 의미
