@@ -58,6 +58,7 @@ scikit-learn baseline: done
 offline sample E2E: done
 CI Docker build check: done
 sample PostgreSQL/API smoke: done
+GitHub Actions Node 24 runtime: done
 ```
 
 ## 주요 실행 포트
@@ -177,5 +178,4 @@ MLflow model artifact 정교화
 sample E2E용 Airflow DAG 또는 DAG conf 추가
 sample E2E에 MLflow logging 추가
 collect_backfill/incremental collector Airflow DAG 분리
-GitHub Actions Node.js 20 deprecation warning 대응
 ```

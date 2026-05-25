@@ -128,8 +128,8 @@ pull_request to main
 실행 내용:
 
 ```text
-actions/checkout@v4
-actions/setup-python@v5
+actions/checkout@v6
+actions/setup-python@v6
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 python -m pytest -q
@@ -186,6 +186,7 @@ docker-compose api service 추가
 API 컨테이너 build 성공
 API 컨테이너 smoke test 성공
 GitHub Actions CI 추가
+GitHub Actions Node 24 runtime 대응
 editable install 검증
 pytest 검증
 offline sample E2E 검증
@@ -203,6 +204,24 @@ API service production 배포
 sample E2E의 Airflow DAG화
 sample E2E의 MLflow logging 추가
 ```
+
+## Node 20 deprecation 대응
+
+GitHub Actions의 Node 20 deprecation warning을 제거하기 위해 공식 action major version을 올렸다.
+
+```text
+actions/checkout@v4 -> actions/checkout@v6
+actions/setup-python@v5 -> actions/setup-python@v6
+```
+
+확인 근거:
+
+```text
+actions/checkout latest release: v6.0.2
+actions/setup-python latest release: v6.2.0
+```
+
+GitHub 공식 changelog에 따르면 Node 20은 EOL 이후 deprecation 중이며, Node 24로 전환된다.
 
 ## 결론
 

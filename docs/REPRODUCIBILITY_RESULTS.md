@@ -176,6 +176,13 @@ CI가 확인하는 것:
 5. API container DB/API smoke test
 ```
 
+Node 20 deprecation warning 대응:
+
+```text
+actions/checkout@v6
+actions/setup-python@v6
+```
+
 원격 GitHub Actions 실행도 확인했다.
 
 ```text

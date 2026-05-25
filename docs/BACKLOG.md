@@ -32,6 +32,7 @@ Q2-1 scikit-learn baseline 교체 및 MLflow sklearn model logging: done
 R1 clean clone offline sample E2E 및 CI Docker build 검증: done
 R1-1 GitHub Actions 원격 green 확인: done
 R2 sample PostgreSQL load 및 API smoke CI 검증: done
+R3 GitHub Actions Node 24 runtime 대응: done
 ```
 
 ## 완료된 MLOps 포트폴리오화 작업
@@ -49,6 +50,7 @@ R2 sample PostgreSQL load 및 API smoke CI 검증: done
 | R1 | clean clone offline sample E2E | 네트워크 없이 최소 sample pipeline 재현 | done |
 | R1-1 | GitHub Actions 원격 green 확인 | push 후 CI 성공 여부 확인 | done |
 | R2 | sample PostgreSQL/API smoke | CI에서 sample 적재와 API 조회 검증 | done |
+| R3 | GitHub Actions Node 24 runtime 대응 | Node 20 deprecation warning 제거 | done |
 
 ## 다음 작업 후보
 
@@ -126,6 +128,7 @@ sample E2E를 PostgreSQL load까지 확장: done
 CI에서 docker compose up postgres/api 후 API smoke test 추가: done
 collect_backfill/incremental collector Airflow DAG 분리: pending
 GitHub Actions 원격 green 확인: done
+GitHub Actions Node 24 runtime 대응: done
 ```
 
 ## 남은 주의사항
