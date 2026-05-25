@@ -159,6 +159,7 @@ GitHub Actions에 다음 단계를 추가했다.
 python pipelines/run_smoke_e2e.py --run-id ci_fixture --top-k 5 --max-iter 1000
 docker compose build api
 docker compose up -d postgres
+docker compose exec -T postgres pg_isready -U recall_user -d recall_risk
 python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
 docker compose up -d api
 curl http://localhost:28000/health/db

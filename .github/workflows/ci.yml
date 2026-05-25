@@ -39,6 +39,13 @@ jobs:
       - name: Load sample data into PostgreSQL
         run: |
           docker compose up -d postgres
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U recall_user -d recall_risk; then
+              break
+            fi
+            sleep 2
+          done
+          docker compose exec -T postgres pg_isready -U recall_user -d recall_risk
           python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
 
       - name: Run API container smoke test
