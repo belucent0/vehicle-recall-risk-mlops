@@ -24,6 +24,10 @@ x-airflow-common: &airflow-common
     GIT_PYTHON_REFRESH: quiet
     NHTSA_RUN_ID: ${NHTSA_RUN_ID:-20260515T114046Z}
     NHTSA_DATA_AS_OF_DATE: ${NHTSA_DATA_AS_OF_DATE:-2026-05-15}
+    NHTSA_COLLECT_VEHICLES_CSV: ${NHTSA_COLLECT_VEHICLES_CSV:-/opt/airflow/project/configs/nhtsa_collection_vehicles.csv}
+    NHTSA_COLLECT_LIMIT: ${NHTSA_COLLECT_LIMIT:-5}
+    NHTSA_COLLECT_SLEEP_SECONDS: ${NHTSA_COLLECT_SLEEP_SECONDS:-0.2}
+    NHTSA_COLLECT_SCHEDULE: ${NHTSA_COLLECT_SCHEDULE:-@daily}
   volumes:
     - ./:/opt/airflow/project
     - ./dags:/opt/airflow/dags

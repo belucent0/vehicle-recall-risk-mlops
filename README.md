@@ -19,6 +19,7 @@ scikit-learn baseline: done
 Docker API: done
 GitHub Actions CI: green
 CI PostgreSQL/API smoke: added
+NHTSA scheduled collection DAG: verified
 ```
 
 ## Quick links
@@ -30,6 +31,7 @@ docs/BACKLOG.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md
 docs/REPRODUCIBILITY_RESULTS.md
+docs/NHTSA_COLLECTION_DAG_RESULTS.md
 docs/MVP_SUMMARY.md
 docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md

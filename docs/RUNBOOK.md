@@ -272,3 +272,58 @@ rule_average_precision: 0.006281
 4. MLflow model registry 또는 artifact store 정리
 5. FastAPI OpenAPI 문서와 example response 정리
 ```
+## 10. NHTSA collection DAG
+
+DAG:
+
+```text
+nhtsa_collect_incremental
+```
+
+Purpose:
+
+```text
+Collect live NHTSA complaints/recalls raw JSON snapshots for a small selected
+vehicle-year list and validate that a manifest was created.
+```
+
+Start Airflow:
+
+```powershell
+docker compose up -d airflow-webserver airflow-scheduler
+```
+
+Run with default configuration:
+
+```powershell
+docker compose exec airflow-webserver airflow dags unpause nhtsa_collect_incremental
+docker compose exec airflow-webserver airflow dags trigger nhtsa_collect_incremental --run-id manual__collect_local_check
+```
+
+Check result:
+
+```powershell
+docker compose exec airflow-webserver airflow dags list-runs -d nhtsa_collect_incremental --no-backfill -o table
+docker compose exec airflow-webserver airflow tasks states-for-dag-run nhtsa_collect_incremental manual__collect_local_check
+```
+
+Default target list:
+
+```text
+configs/nhtsa_collection_vehicles.csv
+```
+
+Default output pattern:
+
+```text
+data/raw/backfill/collect_<airflow_ts_nodash>/
+data/raw/backfill/collect_<airflow_ts_nodash>/manifest.csv
+```
+
+Notes:
+
+```text
+1. This is a scheduled snapshot collector, not a deduplicated incremental loader yet.
+2. JSON conf can override run_id/limit/sleep_seconds, but quoting differs by shell.
+3. CI checks DAG syntax only; it does not call live NHTSA APIs.
+```

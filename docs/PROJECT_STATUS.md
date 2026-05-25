@@ -179,3 +179,31 @@ sample E2E용 Airflow DAG 또는 DAG conf 추가
 sample E2E에 MLflow logging 추가
 collect_backfill/incremental collector Airflow DAG 분리
 ```
+## Latest collection DAG verification
+
+```text
+dag_id: nhtsa_collect_incremental
+run_id: manual__collect_final_20260526T020000
+state: success
+generated collection run_id: collect_20260525T171005
+vehicle count: 5
+request count: 10
+complaint records: 1651
+recall records: 43
+manifest rows: 10
+```
+
+Details:
+
+```text
+docs/NHTSA_COLLECTION_DAG_RESULTS.md
+```
+
+Current MLOps pipeline status:
+
+```text
+Data collection orchestration: verified
+Data processing/model orchestration: verified
+Automatic handoff from collection DAG to processing DAG: pending
+Record-level incremental deduplication: pending
+```

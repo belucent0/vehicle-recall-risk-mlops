@@ -139,3 +139,33 @@ GitHub Actions Node 24 runtime 대응: done
 3. full backfill data는 git에 포함하지 않는다.
 4. clean clone용 sample E2E는 아직 Airflow/MLflow를 포함하지 않는다.
 ```
+## R4. NHTSA scheduled collection DAG
+
+Status: done
+
+Implemented a separate Airflow DAG for live NHTSA snapshot collection.
+
+```text
+dag_id: nhtsa_collect_incremental
+schedule: @daily
+verified run_id: manual__collect_final_20260526T020000
+state: success
+generated collection run_id: collect_20260525T171005
+vehicle count: 5
+request count: 10
+manifest rows: 10
+```
+
+Why this matters:
+
+```text
+The project now has a real scheduled data-collection entry point.
+The current DAG collects raw JSON snapshots and validates the manifest.
+It is not yet a deduplicated incremental loader.
+```
+
+Next:
+
+```text
+Make the processing DAG consume a collected run_id and trigger it after collection succeeds.
+```

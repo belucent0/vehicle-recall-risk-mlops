@@ -1,0 +1,6 @@
+make_query,model_year,make_name,model_name,source
+FORD,2022,FORD,BRONCO SPORT,manual_mvp_collection_list
+HYUNDAI,2022,HYUNDAI,SANTA FE,manual_mvp_collection_list
+KIA,2022,KIA,TELLURIDE,manual_mvp_collection_list
+TESLA,2022,TESLA,MODEL 3,manual_mvp_collection_list
+TOYOTA,2022,TOYOTA,RAV4,manual_mvp_collection_list
