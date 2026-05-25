@@ -172,7 +172,7 @@ warning은 기존 pandas `FutureWarning`이며 이번 Docker/CI 작업과 직접
 
 ```text
 workflow: CI
-run: 26410440597
+run: 26410829848
 conclusion: success
 ```
 
@@ -222,6 +222,13 @@ actions/setup-python latest release: v6.2.0
 ```
 
 GitHub 공식 changelog에 따르면 Node 20은 EOL 이후 deprecation 중이며, Node 24로 전환된다.
+
+검증:
+
+```text
+CI run 26410829848 success
+Node 20 deprecation annotation 없음
+```
 
 ## 결론
 

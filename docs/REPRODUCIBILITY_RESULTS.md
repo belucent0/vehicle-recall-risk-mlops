@@ -189,8 +189,8 @@ actions/setup-python@v6
 workflow: CI
 status: completed
 conclusion: success
-head_sha: c2ca0edc1e98cff658cd00b0bfe5c4a59ecb5237
-url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/26410440597
+head_sha: d05c20e30306f9f195e1a08d4f86b4a385a3f875
+url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/26410829848
 ```
 
 ## 현재 의미
