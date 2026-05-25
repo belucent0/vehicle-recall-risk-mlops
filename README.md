@@ -17,7 +17,7 @@ Airflow DAG scaffold: done
 Airflow E2E run: done
 scikit-learn baseline: done
 Docker API: done
-GitHub Actions CI: added
+GitHub Actions CI: green
 ```
 
 ## Quick links

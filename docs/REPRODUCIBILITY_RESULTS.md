@@ -130,6 +130,16 @@ CI가 확인하는 것:
 3. FastAPI Docker image build
 ```
 
+원격 GitHub Actions 실행도 확인했다.
+
+```text
+workflow: CI
+status: completed
+conclusion: success
+head_sha: 3a57aea01d47cee5b9bc060616a1199d7ca4f5a6
+url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/26383993823
+```
+
 ## 현재 의미
 
 이제 새 환경에서 최소한 다음 주장은 가능하다.
@@ -147,7 +157,7 @@ clean clone에서도 네트워크 없이 sample raw JSON 생성부터 feature/la
 2. sample E2E는 PostgreSQL 적재를 포함하지 않는다.
 3. sample E2E는 MLflow logging을 포함하지 않는다.
 4. full backfill data는 git에 포함하지 않는다.
-5. GitHub Actions 원격 실행 green 여부는 push 후 별도 확인이 필요하다.
+5. full backfill/Airflow/PostgreSQL E2E의 clean clone 재현은 아직 별도 작업이 필요하다.
 ```
 
 ## 다음 개선 후보

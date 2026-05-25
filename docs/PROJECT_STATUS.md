@@ -1,6 +1,6 @@
 # Project Status
 
-작성일: 2026-05-23 KST
+작성일: 2026-05-25 KST
 
 ## 프로젝트
 
@@ -17,7 +17,7 @@ FastAPI read API verified
 MLflow baseline logging verified
 Airflow DAG end-to-end run verified
 Dockerized API verified
-GitHub Actions CI added
+GitHub Actions CI green
 scikit-learn baseline verified
 offline sample E2E added for clean-clone reproducibility
 ```
@@ -51,11 +51,11 @@ FastAPI: done
 MLflow: done
 Airflow E2E: done
 Docker API: done
-GitHub Actions CI: added
+GitHub Actions CI: green
 Portfolio brief/runbook: done
 scikit-learn baseline: done
 offline sample E2E: done
-CI Docker build check: added
+CI Docker build check: done
 ```
 
 ## 주요 실행 포트
@@ -175,5 +175,4 @@ MLflow model artifact 정교화
 sample E2E를 PostgreSQL load까지 확장
 collect_backfill/incremental collector Airflow DAG 분리
 CI에서 docker compose up postgres/api 후 API smoke test 추가
-GitHub Actions 원격 green 확인
 ```
