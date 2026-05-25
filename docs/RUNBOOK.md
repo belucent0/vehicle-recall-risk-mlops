@@ -45,7 +45,37 @@ python -m pytest -q
 기대 결과:
 
 ```text
-3 passed
+4 passed
+```
+
+## 1-1. Clean clone용 offline sample E2E
+
+네트워크 없이 synthetic raw JSON fixture를 만든 뒤 sample pipeline을 한 번 실행한다.
+
+```powershell
+python pipelines/run_smoke_e2e.py --run-id ci_fixture --top-k 5 --max-iter 1000
+```
+
+실행 순서:
+
+```text
+prepare_smoke_fixture
+-> normalize_sample
+-> build_features_sample
+-> build_training_dataset_sample
+-> train_baseline_sample
+```
+
+최근 검증값:
+
+```text
+complaints rows: 30
+recalls rows: 4
+weekly feature rows: 77
+label-ready rows: 73
+positive rows: 26
+test rows: 27
+test positives: 3
 ```
 
 ## 2. PostgreSQL 실행

@@ -30,3 +30,8 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+      - name: Run offline sample E2E
+        run: python pipelines/run_smoke_e2e.py --run-id ci_fixture --top-k 5 --max-iter 1000
+
+      - name: Build API Docker image
+        run: docker compose build api

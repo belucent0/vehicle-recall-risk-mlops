@@ -19,6 +19,7 @@ Airflow DAG end-to-end run verified
 Dockerized API verified
 GitHub Actions CI added
 scikit-learn baseline verified
+offline sample E2E added for clean-clone reproducibility
 ```
 
 ## 핵심 결과
@@ -53,6 +54,8 @@ Docker API: done
 GitHub Actions CI: added
 Portfolio brief/runbook: done
 scikit-learn baseline: done
+offline sample E2E: done
+CI Docker build check: added
 ```
 
 ## 주요 실행 포트
@@ -146,6 +149,7 @@ docs/DOCKER_CI_RESULTS.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md
 docs/BACKFILL_BASELINE_MODEL_RESULTS.md
+docs/REPRODUCIBILITY_RESULTS.md
 ```
 
 ## 현재 다음 작업 후보
@@ -168,8 +172,8 @@ MLflow model artifact 정교화
 ### B. 재현성/운영성 개선
 
 ```text
-clean clone에서 small sample E2E 가능하게 fixture 추가
+sample E2E를 PostgreSQL load까지 확장
 collect_backfill/incremental collector Airflow DAG 분리
-CI에서 Docker build 검증 추가
+CI에서 docker compose up postgres/api 후 API smoke test 추가
 GitHub Actions 원격 green 확인
 ```

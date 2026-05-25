@@ -28,6 +28,7 @@ docs/PROJECT_STATUS.md
 docs/BACKLOG.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md
+docs/REPRODUCIBILITY_RESULTS.md
 docs/MVP_SUMMARY.md
 docs/POSTGRESQL_LOAD_RESULTS.md
 docs/FASTAPI_READ_API_RESULTS.md
@@ -62,6 +63,12 @@ Tests:
 ```bash
 $env:PYTHONPATH='src'
 python -m pytest -q
+```
+
+Offline sample E2E:
+
+```bash
+python pipelines/run_smoke_e2e.py --run-id ci_fixture
 ```
 
 ## Note
