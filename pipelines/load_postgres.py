@@ -71,6 +71,85 @@ TABLE_LOADS = [
 ]
 
 
+SMOKE_TEST_TABLE_LOADS = [
+    (
+        "recall_risk.complaints",
+        PROJECT_ROOT / "data" / "interim" / "smoke_test" / "ci_fixture" / "complaints.csv",
+    ),
+    (
+        "recall_risk.recalls",
+        PROJECT_ROOT / "data" / "interim" / "smoke_test" / "ci_fixture" / "recalls.csv",
+    ),
+    (
+        "recall_risk.weekly_features",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "weekly_features.csv",
+    ),
+    (
+        "recall_risk.training_dataset",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "training_dataset.csv",
+    ),
+    (
+        "recall_risk.training_dataset_labeled_only",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "training_dataset_labeled_only.csv",
+    ),
+    (
+        "recall_risk.latest_risk_scores",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "latest_risk_scores.csv",
+    ),
+    (
+        "recall_risk.baseline_test_predictions",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "baseline_predictions.csv",
+    ),
+    (
+        "recall_risk.baseline_logistic_coefficients",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "baseline_logistic_coefficients.csv",
+    ),
+]
+
+
+ALL_TABLES = [
+    "recall_risk.backfill_manifest",
+    "recall_risk.complaints",
+    "recall_risk.recalls",
+    "recall_risk.weekly_features",
+    "recall_risk.training_dataset",
+    "recall_risk.training_dataset_labeled_only",
+    "recall_risk.latest_risk_scores",
+    "recall_risk.baseline_test_predictions",
+    "recall_risk.baseline_logistic_coefficients",
+]
+
+
 def import_psycopg():
     try:
         import psycopg
@@ -89,11 +168,20 @@ def display_path(path: Path) -> str:
         return str(path)
 
 
-def table_loads_for_run(run_id: str) -> list[tuple[str, Path]]:
-    return [
-        (table, Path(str(path).replace(DEFAULT_RUN_ID, run_id)))
-        for table, path in TABLE_LOADS
-    ]
+def table_loads_for_run(run_id: str, dataset: str = "backfill") -> list[tuple[str, Path]]:
+    if dataset == "backfill":
+        return [
+            (table, Path(str(path).replace(DEFAULT_RUN_ID, run_id)))
+            for table, path in TABLE_LOADS
+        ]
+
+    if dataset == "smoke_test":
+        return [
+            (table, Path(str(path).replace("ci_fixture", run_id)))
+            for table, path in SMOKE_TEST_TABLE_LOADS
+        ]
+
+    raise ValueError(f"Unsupported dataset: {dataset}")
 
 
 def database_url() -> str:
@@ -138,6 +226,12 @@ def copy_csv(conn, table_name: str, csv_path: Path) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Load MVP CSV outputs into PostgreSQL.")
     parser.add_argument("--run-id", default=DEFAULT_RUN_ID)
+    parser.add_argument(
+        "--dataset",
+        choices=["backfill", "smoke_test"],
+        default="backfill",
+        help="CSV output family to load. Defaults to full backfill MVP outputs.",
+    )
     parser.add_argument("--schema-path", default=str(SCHEMA_PATH))
     parser.add_argument("--apply-schema", action="store_true")
     parser.add_argument("--truncate", action="store_true")
@@ -147,7 +241,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     psycopg = import_psycopg()
-    loads = table_loads_for_run(args.run_id)
+    loads = table_loads_for_run(args.run_id, args.dataset)
 
     print(f"Connecting to: {database_url()}")
     with psycopg.connect(database_url()) as conn:
@@ -157,7 +251,7 @@ def main() -> int:
 
         if args.truncate:
             print("Truncating target tables...")
-            truncate_tables(conn, [table for table, _ in loads])
+            truncate_tables(conn, ALL_TABLES)
 
         for table_name, csv_path in loads:
             print(f"Loading {display_path(csv_path)} -> {table_name}")
@@ -170,4 +264,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

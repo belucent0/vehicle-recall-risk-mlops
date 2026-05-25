@@ -20,6 +20,7 @@ Dockerized API verified
 GitHub Actions CI green
 scikit-learn baseline verified
 offline sample E2E added for clean-clone reproducibility
+sample PostgreSQL/API smoke added to CI
 ```
 
 ## 핵심 결과
@@ -56,6 +57,7 @@ Portfolio brief/runbook: done
 scikit-learn baseline: done
 offline sample E2E: done
 CI Docker build check: done
+sample PostgreSQL/API smoke: done
 ```
 
 ## 주요 실행 포트
@@ -172,7 +174,8 @@ MLflow model artifact 정교화
 ### B. 재현성/운영성 개선
 
 ```text
-sample E2E를 PostgreSQL load까지 확장
+sample E2E용 Airflow DAG 또는 DAG conf 추가
+sample E2E에 MLflow logging 추가
 collect_backfill/incremental collector Airflow DAG 분리
-CI에서 docker compose up postgres/api 후 API smoke test 추가
+GitHub Actions Node.js 20 deprecation warning 대응
 ```

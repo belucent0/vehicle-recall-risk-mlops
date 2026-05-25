@@ -18,6 +18,7 @@ Airflow E2E run: done
 scikit-learn baseline: done
 Docker API: done
 GitHub Actions CI: green
+CI PostgreSQL/API smoke: added
 ```
 
 ## Quick links
@@ -69,6 +70,12 @@ Offline sample E2E:
 
 ```bash
 python pipelines/run_smoke_e2e.py --run-id ci_fixture
+```
+
+Load offline sample into PostgreSQL:
+
+```bash
+python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
 ```
 
 ## Note

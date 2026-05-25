@@ -1,6 +1,6 @@
 # Docker / CI Results
 
-작성일: 2026-05-23 KST
+작성일: 2026-05-26 KST
 
 ## 목적
 
@@ -133,6 +133,13 @@ actions/setup-python@v5
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 python -m pytest -q
+python pipelines/run_smoke_e2e.py --run-id ci_fixture --top-k 5 --max-iter 1000
+docker compose build api
+docker compose up -d postgres
+python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
+docker compose up -d api
+curl http://localhost:28000/health/db
+curl "http://localhost:28000/risk-scores/latest?limit=3"
 ```
 
 로컬에서 동일 설치 명령 검증:
@@ -156,10 +163,18 @@ python -m pytest -q
 결과:
 
 ```text
-3 passed, 1 warning
+4 passed, 1 warning
 ```
 
 warning은 기존 pandas `FutureWarning`이며 이번 Docker/CI 작업과 직접 관련 없다.
+
+원격 GitHub Actions 검증:
+
+```text
+workflow: CI
+run: 26384052670
+conclusion: success
+```
 
 ## 현재 의미
 
@@ -173,6 +188,10 @@ API 컨테이너 smoke test 성공
 GitHub Actions CI 추가
 editable install 검증
 pytest 검증
+offline sample E2E 검증
+CI에서 API Docker build 검증
+CI에서 sample PostgreSQL load 검증
+CI에서 FastAPI DB/API smoke test 검증
 ```
 
 아직 안 한 것:
@@ -181,12 +200,12 @@ pytest 검증
 Docker image multi-stage 최적화
 container registry push
 API service production 배포
-CI에서 Docker build까지 강제
-Airflow 전체 DAG end-to-end 실행
+sample E2E의 Airflow DAG화
+sample E2E의 MLflow logging 추가
 ```
 
 ## 결론
 
-P5 Docker/CI 정리는 MVP 기준으로 완료했다.
+P5 Docker/CI 정리는 MVP 기준으로 완료했고, 이후 clean clone sample E2E와 API smoke test까지 CI에 추가했다.
 
-다음 단계는 포트폴리오 정리 또는 모델/데이터 품질 개선 중 하나를 선택하면 된다.
+다음 단계는 sample E2E를 Airflow/MLflow까지 확장하거나, 신규 데이터 수집 incremental DAG를 분리하는 것이다.

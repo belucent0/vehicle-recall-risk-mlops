@@ -78,6 +78,30 @@ test rows: 27
 test positives: 3
 ```
 
+sample 결과를 PostgreSQL에 적재:
+
+```powershell
+docker compose up -d postgres
+python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
+```
+
+sample API smoke:
+
+```powershell
+docker compose up -d api
+Invoke-WebRequest -UseBasicParsing http://localhost:28000/health/db
+Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/latest?limit=3"
+```
+
+주의:
+
+```text
+--truncate를 사용하면 현재 PostgreSQL 테이블이 sample data로 교체된다.
+full MVP data로 되돌리려면 아래를 실행한다.
+
+python pipelines/load_postgres.py --run-id 20260515T114046Z --apply-schema --truncate
+```
+
 ## 2. PostgreSQL 실행
 
 ```powershell

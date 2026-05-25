@@ -15,6 +15,7 @@ clean clone 또는 CI 환경에서 네트워크 없이 최소 데이터 파이�
 ```text
 pipelines/prepare_smoke_fixture.py
 pipelines/run_smoke_e2e.py
+pipelines/load_postgres.py
 .github/workflows/ci.yml
 ```
 
@@ -113,6 +114,43 @@ docker compose build api
 Image vehicle-recall-risk-api:local Built
 ```
 
+sample 산출물을 PostgreSQL에 적재하고 FastAPI 조회도 확인했다.
+
+실행:
+
+```bash
+python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
+```
+
+적재 결과:
+
+```text
+complaints: 30
+recalls: 4
+weekly_features: 77
+training_dataset: 77
+training_dataset_labeled_only: 73
+latest_risk_scores: 2
+baseline_test_predictions: 73
+baseline_logistic_coefficients: 12
+```
+
+API smoke:
+
+```text
+GET /health/db: 200
+GET /risk-scores/latest?limit=3: 200
+```
+
+sample API 응답 예:
+
+```text
+HYUNDAI SANTA FE 2022 ENGINE score=2.4749
+KIA TELLURIDE 2022 ELECTRICAL SYSTEM score=2.4749
+```
+
+로컬 검증 후 개발 DB는 다시 full backfill 데이터로 복구했다.
+
 ## CI 변경
 
 GitHub Actions에 다음 단계를 추가했다.
@@ -120,6 +158,11 @@ GitHub Actions에 다음 단계를 추가했다.
 ```text
 python pipelines/run_smoke_e2e.py --run-id ci_fixture --top-k 5 --max-iter 1000
 docker compose build api
+docker compose up -d postgres
+python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
+docker compose up -d api
+curl http://localhost:28000/health/db
+curl "http://localhost:28000/risk-scores/latest?limit=3"
 ```
 
 CI가 확인하는 것:
@@ -128,6 +171,8 @@ CI가 확인하는 것:
 1. Python unit tests
 2. offline sample E2E
 3. FastAPI Docker image build
+4. sample PostgreSQL load
+5. API container DB/API smoke test
 ```
 
 원격 GitHub Actions 실행도 확인했다.
@@ -145,7 +190,7 @@ url: https://github.com/belucent0/vehicle-recall-risk-mlops/actions/runs/2638399
 이제 새 환경에서 최소한 다음 주장은 가능하다.
 
 ```text
-clean clone에서도 네트워크 없이 sample raw JSON 생성부터 feature/label/model artifact 생성까지 실행할 수 있다.
+clean clone에서도 네트워크 없이 sample raw JSON 생성부터 feature/label/model artifact 생성, PostgreSQL 적재, API 조회까지 실행할 수 있다.
 ```
 
 다만 전체 backfill/Airflow/PostgreSQL E2E는 여전히 기존 runtime data 또는 별도 수집 단계가 필요하다.
@@ -154,17 +199,16 @@ clean clone에서도 네트워크 없이 sample raw JSON 생성부터 feature/la
 
 ```text
 1. sample E2E는 Airflow를 사용하지 않는다.
-2. sample E2E는 PostgreSQL 적재를 포함하지 않는다.
-3. sample E2E는 MLflow logging을 포함하지 않는다.
-4. full backfill data는 git에 포함하지 않는다.
-5. full backfill/Airflow/PostgreSQL E2E의 clean clone 재현은 아직 별도 작업이 필요하다.
+2. sample E2E는 MLflow logging을 포함하지 않는다.
+3. full backfill data는 git에 포함하지 않는다.
+4. full backfill/Airflow/PostgreSQL E2E의 clean clone 재현은 아직 별도 작업이 필요하다.
 ```
 
 ## 다음 개선 후보
 
 ```text
-1. sample E2E를 PostgreSQL load까지 확장
-2. sample E2E용 Airflow DAG 또는 DAG conf 추가
-3. CI에서 docker compose up postgres/api 후 API smoke test 추가
-4. collect_backfill/incremental collector를 Airflow DAG로 분리
+1. sample E2E용 Airflow DAG 또는 DAG conf 추가
+2. sample E2E에 MLflow logging 추가
+3. collect_backfill/incremental collector를 Airflow DAG로 분리
+4. GitHub Actions의 Node.js 20 deprecation warning 대응
 ```

@@ -35,3 +35,26 @@ jobs:
 
       - name: Build API Docker image
         run: docker compose build api
+
+      - name: Load sample data into PostgreSQL
+        run: |
+          docker compose up -d postgres
+          python pipelines/load_postgres.py --dataset smoke_test --run-id ci_fixture --apply-schema --truncate
+
+      - name: Run API container smoke test
+        run: |
+          docker compose up -d api
+          for i in {1..30}; do
+            if curl -fsS http://localhost:28000/health/db; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:28000/health
+          curl -fsS "http://localhost:28000/risk-scores/latest?limit=3"
+
+      - name: Dump compose diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=200

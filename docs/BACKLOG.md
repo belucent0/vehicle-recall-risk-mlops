@@ -31,6 +31,7 @@ P7 포트폴리오 브리프/로컬 실행 가이드: done
 Q2-1 scikit-learn baseline 교체 및 MLflow sklearn model logging: done
 R1 clean clone offline sample E2E 및 CI Docker build 검증: done
 R1-1 GitHub Actions 원격 green 확인: done
+R2 sample PostgreSQL load 및 API smoke CI 검증: done
 ```
 
 ## 완료된 MLOps 포트폴리오화 작업
@@ -47,6 +48,7 @@ R1-1 GitHub Actions 원격 green 확인: done
 | Q2-1 | scikit-learn baseline 교체 | 표준 ML workflow와 model artifact logging 확보 | done |
 | R1 | clean clone offline sample E2E | 네트워크 없이 최소 sample pipeline 재현 | done |
 | R1-1 | GitHub Actions 원격 green 확인 | push 후 CI 성공 여부 확인 | done |
+| R2 | sample PostgreSQL/API smoke | CI에서 sample 적재와 API 조회 검증 | done |
 
 ## 다음 작업 후보
 
@@ -120,8 +122,8 @@ clean clone과 CI에서 확인 가능한 실행 범위를 확장한다.
 clean clone에서 small sample E2E 가능하게 fixture 추가: done
 CI에서 offline sample E2E 실행: done
 CI에서 Docker build 검증 추가: done
-sample E2E를 PostgreSQL load까지 확장: pending
-CI에서 docker compose up postgres/api 후 API smoke test 추가: pending
+sample E2E를 PostgreSQL load까지 확장: done
+CI에서 docker compose up postgres/api 후 API smoke test 추가: done
 collect_backfill/incremental collector Airflow DAG 분리: pending
 GitHub Actions 원격 green 확인: done
 ```
@@ -132,5 +134,5 @@ GitHub Actions 원격 green 확인: done
 1. collect_backfill은 이번 Airflow E2E DAG에 포함하지 않았다.
 2. 현재 Airflow E2E는 기존 raw backfill 데이터를 기준으로 재처리한다.
 3. full backfill data는 git에 포함하지 않는다.
-4. clean clone용 sample E2E는 아직 PostgreSQL/Airflow/MLflow를 포함하지 않는다.
+4. clean clone용 sample E2E는 아직 Airflow/MLflow를 포함하지 않는다.
 ```
