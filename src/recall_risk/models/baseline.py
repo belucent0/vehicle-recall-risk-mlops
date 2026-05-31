@@ -364,3 +364,23 @@ def save_model_artifact(
     path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(payload, path)
     return path
+
+
+def load_model_artifact(path: Path) -> LogisticModel:
+    """Load a persisted sklearn pipeline artifact as a LogisticModel wrapper."""
+
+    import joblib
+
+    loaded = joblib.load(path)
+    if isinstance(loaded, dict):
+        return LogisticModel(
+            pipeline=loaded["pipeline"],
+            features=list(loaded.get("features", NUMERIC_FEATURES)),
+            model_type=loaded.get("model_type", "sklearn_logistic_regression_pipeline"),
+        )
+
+    return LogisticModel(
+        pipeline=loaded,
+        features=NUMERIC_FEATURES,
+        model_type="sklearn_logistic_regression_pipeline",
+    )

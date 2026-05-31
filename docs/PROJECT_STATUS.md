@@ -278,12 +278,37 @@ docs/MODEL_VERSION_METADATA_RESULTS.md
 Updated limitation:
 
 ```text
-Training and test scoring are still coupled in train_baseline_backfill.py.
-Dedicated batch scoring DAG/task is pending.
+Resolved by R8: training and batch scoring are now split into separate
+scripts and Airflow tasks.
 ```
 
 Details:
 
 ```text
 docs/INCREMENTAL_INGESTION_RESULTS.md
+```
+
+## Training/scoring split verification
+
+```text
+train_model_backfill.py: done
+score_batch_backfill.py: done
+nhtsa_recall_risk_mvp train_model task: done
+nhtsa_recall_risk_mvp score_batch task: done
+legacy train_baseline_backfill.py wrapper: done
+```
+
+Verified Airflow run:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__train_score_split_20260601T000200
+state: success
+task order: build_features_labels -> train_model -> score_batch -> report/load/mlflow
+```
+
+Details:
+
+```text
+docs/TRAIN_SCORE_SPLIT_RESULTS.md
 ```

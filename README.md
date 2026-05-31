@@ -16,6 +16,7 @@ MLflow logging: done
 Airflow DAG scaffold: done
 Airflow E2E run: done
 scikit-learn baseline: done
+Training/scoring split: done
 Docker API: done
 GitHub Actions CI: green
 CI PostgreSQL/API smoke: added
@@ -33,6 +34,7 @@ docs/ARCHITECTURE_ASCII.md
 docs/DAG_HANDOFF_RESULTS.md
 docs/INCREMENTAL_INGESTION_RESULTS.md
 docs/MODEL_VERSION_METADATA_RESULTS.md
+docs/TRAIN_SCORE_SPLIT_RESULTS.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md
 docs/REPRODUCIBILITY_RESULTS.md

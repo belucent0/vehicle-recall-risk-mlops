@@ -12,8 +12,9 @@ Status note:
 As of 2026-05-31, collection-to-processing DAG handoff is implemented.
 First-pass PostgreSQL ingestion_state/raw_record_index support is implemented.
 Model/scoring version metadata is implemented in prediction and serving outputs.
-The remaining major gap is splitting training and batch scoring, then moving
-feature generation toward DB-backed bronze/silver tables.
+Training and batch scoring are now separate pipeline scripts and Airflow tasks.
+The remaining major gap is moving feature generation toward DB-backed
+bronze/silver tables and connecting scoring to an MLflow model alias.
 ```
 
 ## 1. Current architecture
@@ -69,7 +70,10 @@ run_id.
 |   |  build_features_labels           |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
-|   |  train_baseline                  |                                   |
+|   |  train_model                     |                                   |
+|   |          |                       |                                   |
+|   |          v                       |                                   |
+|   |  score_batch                     |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
 |   |  generate_latest_risk_report     |                                   |
@@ -95,6 +99,7 @@ run_id.
 |    - training_dataset.csv                                                |
 |    - latest_risk_scores.csv                                              |
 |    - baseline_test_predictions.csv                                       |
+|    - baseline_training_summary.json                                      |
 |    - sklearn_logistic_pipeline.joblib                                    |
 |                                                                          |
 |  reports/*.md                                                            |
@@ -236,7 +241,8 @@ still available for local reset.
                                v
               +----------------------------------+
               | normalize -> features -> train   |
-              | -> report -> load PG -> MLflow   |
+              | -> score -> report -> load PG    |
+              | -> MLflow                        |
               +----------------+-----------------+
                                |
                                v
@@ -390,7 +396,7 @@ stateful, incremental, DB-backed MLOps architecture.
           |
           v
 +--------------------+
-| Step 3             |
+| Step 3 done        |
 |                    |
 | separate training  |
 | and scoring DAGs   |
@@ -444,8 +450,9 @@ FastAPI
 NEXT
 ====
 
-Split training and batch scoring into separate
-pipeline/DAG stages.
+Connect scoring to an MLflow model artifact/alias,
+then move features toward DB-backed bronze/silver
+tables.
 
 
 TARGET

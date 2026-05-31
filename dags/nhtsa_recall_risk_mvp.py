@@ -52,7 +52,8 @@ with DAG(
         bash_command=project_command(
             "test -f pipelines/normalize_backfill.py "
             "&& test -f pipelines/build_features_labels_backfill.py "
-            "&& test -f pipelines/train_baseline_backfill.py "
+            "&& test -f pipelines/train_model_backfill.py "
+            "&& test -f pipelines/score_batch_backfill.py "
             "&& test -f pipelines/load_postgres.py "
             "&& test -f pipelines/log_baseline_mlflow.py "
             f'&& test -s "data/raw/backfill/{RUN_ID_TEMPLATE}/manifest.csv" '
@@ -80,14 +81,22 @@ with DAG(
         do_xcom_push=False,
     )
 
-    train_baseline = BashOperator(
-        task_id="train_baseline",
+    train_model = BashOperator(
+        task_id="train_model",
         bash_command=project_command(
-            "python pipelines/train_baseline_backfill.py "
+            "python pipelines/train_model_backfill.py "
             f'--run-id "{RUN_ID_TEMPLATE}" '
             "--epochs 120 "
             "--negative-ratio 20 "
             "--max-train-rows 100000"
+        ),
+        do_xcom_push=False,
+    )
+
+    score_batch = BashOperator(
+        task_id="score_batch",
+        bash_command=project_command(
+            f'python pipelines/score_batch_backfill.py --run-id "{RUN_ID_TEMPLATE}"'
         ),
         do_xcom_push=False,
     )
@@ -120,7 +129,8 @@ with DAG(
         check_project
         >> normalize_backfill
         >> build_features_labels
-        >> train_baseline
+        >> train_model
+        >> score_batch
         >> generate_latest_risk_report
         >> load_postgres
         >> log_mlflow

@@ -206,7 +206,8 @@ docker compose exec airflow-webserver airflow tasks states-for-dag-run nhtsa_rec
 check_project_files
 normalize_backfill
 build_features_labels
-train_baseline
+train_model
+score_batch
 generate_latest_risk_report
 load_postgres
 log_mlflow
@@ -425,3 +426,51 @@ from recall_risk.baseline_test_predictions
 group by load_run_id, source_run_id, model_version, model_type, model_library;
 "
 ```
+
+## 13. Split train/score backfill run
+
+Run training only:
+
+```powershell
+python pipelines/train_model_backfill.py --run-id 20260515T114046Z --epochs 120 --negative-ratio 20 --max-train-rows 100000
+```
+
+Run batch scoring with the trained artifact:
+
+```powershell
+python pipelines/score_batch_backfill.py --run-id 20260515T114046Z
+```
+
+Expected artifact flow:
+
+```text
+train_model_backfill.py
+  -> baseline_training_summary.json
+  -> baseline_logistic_coefficients.csv
+  -> sklearn_logistic_pipeline.joblib
+
+score_batch_backfill.py
+  -> baseline_test_predictions.csv
+  -> baseline_model_summary.json
+```
+
+Current Airflow processing DAG task order:
+
+```text
+check_project_files
+normalize_backfill
+build_features_labels
+train_model
+score_batch
+generate_latest_risk_report
+load_postgres
+log_mlflow
+```
+
+Compatibility note:
+
+```text
+python pipelines/train_baseline_backfill.py ...
+```
+
+still works, but it is now only a wrapper around the two split scripts.

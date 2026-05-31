@@ -261,3 +261,46 @@ Next:
 ```text
 Split training and batch scoring into separate steps.
 ```
+
+## R8. Split training and batch scoring
+
+Status: done
+
+Implemented separate training and scoring entrypoints.
+
+```text
+pipelines/train_model_backfill.py
+  -> sklearn_logistic_pipeline.joblib
+  -> baseline_logistic_coefficients.csv
+  -> baseline_training_summary.json
+
+pipelines/score_batch_backfill.py
+  -> loads sklearn_logistic_pipeline.joblib
+  -> baseline_test_predictions.csv
+  -> baseline_model_summary.json
+```
+
+Airflow task sequence:
+
+```text
+build_features_labels
+  -> train_model
+  -> score_batch
+  -> generate_latest_risk_report
+  -> load_postgres
+  -> log_mlflow
+```
+
+Verified:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__train_score_split_20260601T000200
+state: success
+```
+
+Next:
+
+```text
+Use MLflow model artifact/alias as the scoring input, or add a model promotion gate.
+```

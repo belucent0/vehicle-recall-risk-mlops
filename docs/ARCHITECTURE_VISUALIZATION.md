@@ -37,11 +37,12 @@ flowchart LR
             m1["check_project_files"]
             m2["normalize_backfill.py"]
             m3["build_features_labels_backfill.py"]
-            m4["train_baseline_backfill.py<br/>scikit-learn"]
-            m5["generate_latest_risk_report.py"]
-            m6["load_postgres.py"]
-            m7["log_baseline_mlflow.py"]
-            m1 --> m2 --> m3 --> m4 --> m5 --> m6 --> m7
+            m4["train_model_backfill.py<br/>scikit-learn"]
+            m5["score_batch_backfill.py"]
+            m6["generate_latest_risk_report.py"]
+            m7["load_postgres.py"]
+            m8["log_baseline_mlflow.py"]
+            m1 --> m2 --> m3 --> m4 --> m5 --> m6 --> m7 --> m8
         end
     end
 
@@ -86,9 +87,10 @@ flowchart LR
     m3 --> processed
     m4 --> processed
     m4 --> model_file
-    m5 --> reports
-    m6 --> db
-    m7 --> mlflow_file
+    m5 --> processed
+    m6 --> reports
+    m7 --> db
+    m8 --> mlflow_file
 
     db --> view
     view --> api
@@ -104,7 +106,7 @@ flowchart LR
     classDef store fill:#ebfbee,stroke:#2b8a3e,color:#102a43;
     classDef serve fill:#f3f0ff,stroke:#7048e8,color:#102a43;
 
-    class c1,c2,c3,m1,m2,m3,m4,m5,m6,m7,tests,dag_parse,sample_e2e,docker_build,api_smoke done;
+    class c1,c2,c3,m1,m2,m3,m4,m5,m6,m7,m8,tests,dag_parse,sample_e2e,docker_build,api_smoke done;
     class raw,interim,processed,reports,model_file,mlflow_file,t1,t2,t3,t4,t5,view store;
     class api,client serve;
 ```
@@ -126,11 +128,12 @@ flowchart TB
         p0["check_project_files"]
         p1["normalize_backfill"]
         p2["build_features_labels"]
-        p3["train_baseline"]
-        p4["generate_latest_risk_report"]
-        p5["load_postgres"]
-        p6["log_mlflow"]
-        p0 --> p1 --> p2 --> p3 --> p4 --> p5 --> p6
+        p3["train_model"]
+        p4["score_batch"]
+        p5["generate_latest_risk_report"]
+        p6["load_postgres"]
+        p7["log_mlflow"]
+        p0 --> p1 --> p2 --> p3 --> p4 --> p5 --> p6 --> p7
     end
 
     c --> t["trigger_recall_risk_mvp<br/>TriggerDagRunOperator"]
@@ -161,9 +164,10 @@ flowchart LR
 
     process --> normalize["normalize_backfill"]
     normalize --> features["features + labels"]
-    features --> train["train baseline / score"]
-    train --> load["load_postgres"]
-    train --> mlflow["log_mlflow"]
+    features --> train["train_model"]
+    train --> score["score_batch"]
+    score --> load["load_postgres"]
+    score --> mlflow["log_mlflow"]
     load --> postgres["PostgreSQL serving tables"]
     postgres --> api["FastAPI"]
 
@@ -292,7 +296,7 @@ flowchart LR
     s0["현재<br/>수집 DAG와 처리 DAG 연결<br/>automatic handoff"]
     s1["Step 1 done<br/>run_id conf 전달<br/>collection -> processing trigger"]
     s2["Step 2 done<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
-    s3["Step 3 partial<br/>model_version 기록 완료<br/>training/scoring 분리 pending"]
+    s3["Step 3 done<br/>model_version metadata<br/>training/scoring split"]
     s4["Step 4<br/>MLflow registry + promotion gate"]
     s5["Step 5<br/>monitoring / dashboard / alerts"]
 
@@ -307,7 +311,8 @@ flowchart LR
 | 2 | `TriggerDagRunOperator` 적용 | done |
 | 3 | ingestion state/dedupe table 추가 | snapshot 반복 수집에서 true incremental ingestion으로 전환 |
 | 4 | prediction/model_version metadata 추가 | done |
-| 5 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
+| 5 | training/scoring split | done |
+| 6 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
 
 ## 6. 한 줄 판단
 
@@ -322,6 +327,6 @@ incremental ingestion은 1차 구현됐지만, feature generation은 아직 CSV 
 다음 구현은 다음 하나가 맞다.
 
 ```text
-training과 batch scoring 단계를 분리하고,
-MLflow model artifact URI를 scoring metadata에 연결한다.
+training과 batch scoring 단계 분리는 완료.
+다음은 MLflow model artifact URI/alias를 scoring input에 연결한다.
 ```
