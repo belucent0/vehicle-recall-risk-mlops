@@ -71,3 +71,72 @@ def test_latest_risk_scores_uses_query_params(monkeypatch) -> None:
             "baseline_risk_score": 2.4749,
         }
     ]
+
+
+def test_model_latest_risk_scores_uses_query_params(monkeypatch) -> None:
+    def fake_fetch_model_latest_risk_scores(
+        *,
+        limit: int = 25,
+        make: str | None = None,
+        model: str | None = None,
+        component: str | None = None,
+    ) -> list[dict[str, object]]:
+        assert limit == 3
+        assert make is None
+        assert model == "BRONCO SPORT"
+        assert component == "ENGINE"
+        return [
+            {
+                "load_run_id": "test_load",
+                "source_run_id": "test_source",
+                "model_version": "sklearn_logistic_v1",
+                "model_type": "sklearn_logistic_regression_pipeline",
+                "model_library": "scikit-learn",
+                "scoring_method": "sklearn_logistic_latest_week",
+                "scored_at_utc": "2026-06-01T00:00:00Z",
+                "rank": 1,
+                "make": "FORD",
+                "model": "BRONCO SPORT",
+                "model_year": 2022,
+                "component": "ENGINE",
+                "week_start": "2026-05-11",
+                "complaint_count": 1,
+                "severe_complaint_count": 0,
+                "complaint_spike_z": 2.0,
+                "baseline_risk_score": 2.4749,
+                "logistic_risk_score": 0.8193,
+            }
+        ]
+
+    monkeypatch.setattr(
+        serving_app,
+        "fetch_model_latest_risk_scores",
+        fake_fetch_model_latest_risk_scores,
+    )
+    client = TestClient(serving_app.app)
+
+    response = client.get("/risk-scores/model/latest?limit=3&model=BRONCO%20SPORT&component=ENGINE")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "load_run_id": "test_load",
+            "source_run_id": "test_source",
+            "model_version": "sklearn_logistic_v1",
+            "model_type": "sklearn_logistic_regression_pipeline",
+            "model_library": "scikit-learn",
+            "scoring_method": "sklearn_logistic_latest_week",
+            "scored_at_utc": "2026-06-01T00:00:00Z",
+            "rank": 1,
+            "make": "FORD",
+            "model": "BRONCO SPORT",
+            "model_year": 2022,
+            "component": "ENGINE",
+            "week_start": "2026-05-11",
+            "complaint_count": 1,
+            "severe_complaint_count": 0,
+            "complaint_spike_z": 2.0,
+            "baseline_risk_score": 2.4749,
+            "logistic_risk_score": 0.8193,
+        }
+    ]

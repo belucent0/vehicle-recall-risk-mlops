@@ -88,3 +88,65 @@ def fetch_latest_risk_scores(
         with conn.cursor() as cur:
             cur.execute(query, params)
             return [dict(row) for row in cur.fetchall()]
+
+
+def fetch_model_latest_risk_scores(
+    *,
+    limit: int = 25,
+    make: str | None = None,
+    model: str | None = None,
+    component: str | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch latest model-based risk scores from the typed PostgreSQL view."""
+
+    params: dict[str, Any] = {"limit": limit}
+    conditions: list[sql.Composable] = []
+
+    if make:
+        conditions.append(sql.SQL("make = %(make)s"))
+        params["make"] = make.strip().upper()
+
+    if model:
+        conditions.append(sql.SQL("model = %(model)s"))
+        params["model"] = model.strip().upper()
+
+    if component:
+        conditions.append(sql.SQL("component_primary ILIKE %(component)s"))
+        params["component"] = f"%{component.strip()}%"
+
+    where_clause = sql.SQL("")
+    if conditions:
+        where_clause = sql.SQL("WHERE ") + sql.SQL(" AND ").join(conditions)
+
+    query = sql.SQL(
+        """
+        SELECT
+            load_run_id,
+            source_run_id,
+            model_version,
+            model_type,
+            model_library,
+            scoring_method,
+            scored_at_utc,
+            rank,
+            make,
+            model,
+            model_year,
+            component_primary AS component,
+            week_start,
+            complaint_count,
+            severe_complaint_count,
+            complaint_spike_z,
+            baseline_risk_score,
+            logistic_risk_score
+        FROM recall_risk.v_model_latest_risk_scores
+        {where_clause}
+        ORDER BY rank ASC
+        LIMIT %(limit)s
+        """
+    ).format(where_clause=where_clause)
+
+    with psycopg.connect(database_url_from_env(), row_factory=dict_row, connect_timeout=3) as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return [dict(row) for row in cur.fetchall()]

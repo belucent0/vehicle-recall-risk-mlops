@@ -13,8 +13,9 @@ As of 2026-05-31, collection-to-processing DAG handoff is implemented.
 First-pass PostgreSQL ingestion_state/raw_record_index support is implemented.
 Model/scoring version metadata is implemented in prediction and serving outputs.
 Training and batch scoring are now separate pipeline scripts and Airflow tasks.
-The remaining major gap is moving feature generation toward DB-backed
-bronze/silver tables and connecting scoring to an MLflow model alias.
+The trained model now also produces latest-week serving scores.
+The remaining major gap is connecting scoring to an MLflow model alias and
+moving feature generation toward DB-backed bronze/silver tables.
 ```
 
 ## 1. Current architecture
@@ -76,6 +77,9 @@ run_id.
 |   |  score_batch                     |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
+|   |  score_latest                    |                                   |
+|   |          |                       |                                   |
+|   |          v                       |                                   |
 |   |  generate_latest_risk_report     |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
@@ -99,6 +103,7 @@ run_id.
 |    - training_dataset.csv                                                |
 |    - latest_risk_scores.csv                                              |
 |    - baseline_test_predictions.csv                                       |
+|    - model_latest_risk_scores.csv                                        |
 |    - baseline_training_summary.json                                      |
 |    - sklearn_logistic_pipeline.joblib                                    |
 |                                                                          |
@@ -116,10 +121,12 @@ run_id.
 |  weekly_features                                                         |
 |  training_dataset                                                        |
 |  latest_risk_scores                                                      |
+|  model_latest_risk_scores                                                |
 |  baseline_test_predictions                                               |
 |  baseline_logistic_coefficients                                          |
 |                                                                          |
 |  view: v_latest_risk_scores                                              |
+|  view: v_model_latest_risk_scores                                        |
 +-------------------------------+------------------------------------------+
                                 |
                                 v
@@ -129,6 +136,8 @@ run_id.
                     |  GET /health              |
                     |  GET /health/db           |
                     |  GET /risk-scores/latest  |
+                    |  GET /risk-scores/model/  |
+                    |      latest               |
                     +-------------+-------------+
                                   |
                                   v
@@ -404,7 +413,15 @@ stateful, incremental, DB-backed MLOps architecture.
           |
           v
 +--------------------+
-| Step 4             |
+| Step 4 done        |
+|                    |
+| model latest       |
+| serving scores     |
++---------+----------+
+          |
+          v
++--------------------+
+| Step 5             |
 |                    |
 | MLflow registry    |
 | promotion gate     |
@@ -412,7 +429,7 @@ stateful, incremental, DB-backed MLOps architecture.
           |
           v
 +--------------------+
-| Step 5             |
+| Step 6             |
 |                    |
 | monitoring         |
 | dashboard / alerts |
@@ -436,6 +453,14 @@ raw JSON + manifest
    |  automatic trigger with conf.run_id
    v
 Airflow processing DAG
+   |
+   +--> normalize
+   +--> feature/label build
+   +--> train_model
+   +--> score_batch        # held-out test evaluation
+   +--> score_latest       # latest-week model serving score
+   +--> load_postgres
+   +--> log_mlflow
    |
    v
 CSV artifacts

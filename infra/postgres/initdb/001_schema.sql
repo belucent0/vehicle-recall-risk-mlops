@@ -164,6 +164,33 @@ CREATE TABLE IF NOT EXISTS recall_risk.baseline_logistic_coefficients (
     coefficient TEXT
 );
 
+CREATE TABLE IF NOT EXISTS recall_risk.model_latest_risk_scores (
+    source_run_id TEXT,
+    model_version TEXT,
+    model_type TEXT,
+    model_library TEXT,
+    scoring_method TEXT,
+    scored_at_utc TEXT,
+    rank TEXT,
+    make TEXT,
+    model TEXT,
+    model_year TEXT,
+    component_primary TEXT,
+    week_start TEXT,
+    complaint_count TEXT,
+    crash_count TEXT,
+    fire_count TEXT,
+    injury_count TEXT,
+    death_count TEXT,
+    severe_complaint_count TEXT,
+    rolling_4w_complaint_mean_prior TEXT,
+    rolling_8w_complaint_mean_prior TEXT,
+    rolling_8w_complaint_std_prior TEXT,
+    complaint_spike_z TEXT,
+    baseline_risk_score TEXT,
+    logistic_risk_score TEXT
+);
+
 CREATE TABLE IF NOT EXISTS recall_risk.ingestion_state (
     table_name TEXT NOT NULL,
     load_run_id TEXT NOT NULL,
@@ -248,6 +275,17 @@ ALTER TABLE recall_risk.baseline_logistic_coefficients
     ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS record_hash TEXT;
 
+ALTER TABLE recall_risk.model_latest_risk_scores
+    ADD COLUMN IF NOT EXISTS source_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS model_version TEXT,
+    ADD COLUMN IF NOT EXISTS model_type TEXT,
+    ADD COLUMN IF NOT EXISTS model_library TEXT,
+    ADD COLUMN IF NOT EXISTS scoring_method TEXT,
+    ADD COLUMN IF NOT EXISTS scored_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_complaints_entity
     ON recall_risk.complaints (make, model, model_year, component_primary);
 
@@ -262,6 +300,9 @@ CREATE INDEX IF NOT EXISTS idx_training_dataset_label
 
 CREATE INDEX IF NOT EXISTS idx_latest_risk_scores_rank
     ON recall_risk.latest_risk_scores (rank);
+
+CREATE INDEX IF NOT EXISTS idx_model_latest_risk_scores_rank
+    ON recall_risk.model_latest_risk_scores (rank);
 
 CREATE INDEX IF NOT EXISTS idx_ingestion_state_status
     ON recall_risk.ingestion_state (table_name, status, completed_at_utc);
@@ -305,6 +346,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_baseline_coefficients_load_hash
     ON recall_risk.baseline_logistic_coefficients (load_run_id, record_hash)
     WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_model_latest_scores_load_hash
+    ON recall_risk.model_latest_risk_scores (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_complaints_record_hash
     ON recall_risk.complaints (record_hash)
     WHERE record_hash IS NOT NULL AND record_hash <> '';
@@ -341,6 +386,43 @@ SELECT
     NULLIF(complaint_spike_z, '')::DOUBLE PRECISION AS complaint_spike_z,
     NULLIF(baseline_risk_score, '')::DOUBLE PRECISION AS baseline_risk_score
 FROM recall_risk.latest_risk_scores
+WHERE (
+    EXISTS (SELECT 1 FROM latest_successful_load)
+    AND load_run_id = (SELECT load_run_id FROM latest_successful_load)
+)
+OR NOT EXISTS (SELECT 1 FROM latest_successful_load);
+
+DROP VIEW IF EXISTS recall_risk.v_model_latest_risk_scores;
+
+CREATE OR REPLACE VIEW recall_risk.v_model_latest_risk_scores AS
+WITH latest_successful_load AS (
+    SELECT load_run_id
+    FROM recall_risk.ingestion_state
+    WHERE table_name = 'recall_risk.model_latest_risk_scores'
+      AND status = 'success'
+    ORDER BY NULLIF(completed_at_utc, '')::TIMESTAMPTZ DESC NULLS LAST
+    LIMIT 1
+)
+SELECT
+    load_run_id,
+    source_run_id,
+    model_version,
+    model_type,
+    model_library,
+    scoring_method,
+    NULLIF(scored_at_utc, '')::TIMESTAMPTZ AS scored_at_utc,
+    NULLIF(rank, '')::INTEGER AS rank,
+    make,
+    model,
+    NULLIF(model_year, '')::INTEGER AS model_year,
+    component_primary,
+    NULLIF(week_start, '')::DATE AS week_start,
+    NULLIF(complaint_count, '')::INTEGER AS complaint_count,
+    NULLIF(severe_complaint_count, '')::INTEGER AS severe_complaint_count,
+    NULLIF(complaint_spike_z, '')::DOUBLE PRECISION AS complaint_spike_z,
+    NULLIF(baseline_risk_score, '')::DOUBLE PRECISION AS baseline_risk_score,
+    NULLIF(logistic_risk_score, '')::DOUBLE PRECISION AS logistic_risk_score
+FROM recall_risk.model_latest_risk_scores
 WHERE (
     EXISTS (SELECT 1 FROM latest_successful_load)
     AND load_run_id = (SELECT load_run_id FROM latest_successful_load)

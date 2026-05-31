@@ -4,7 +4,6 @@ import argparse
 import csv
 import hashlib
 import os
-import sys
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -73,6 +72,15 @@ TABLE_LOADS = [
         / DEFAULT_RUN_ID
         / "baseline_logistic_coefficients.csv",
     ),
+    (
+        "recall_risk.model_latest_risk_scores",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "backfill"
+        / DEFAULT_RUN_ID
+        / "model_latest_risk_scores.csv",
+    ),
 ]
 
 
@@ -139,6 +147,15 @@ SMOKE_TEST_TABLE_LOADS = [
         / "ci_fixture"
         / "baseline_logistic_coefficients.csv",
     ),
+    (
+        "recall_risk.model_latest_risk_scores",
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "smoke_test"
+        / "ci_fixture"
+        / "model_latest_risk_scores.csv",
+    ),
 ]
 
 
@@ -152,6 +169,7 @@ ALL_TABLES = [
     "recall_risk.latest_risk_scores",
     "recall_risk.baseline_test_predictions",
     "recall_risk.baseline_logistic_coefficients",
+    "recall_risk.model_latest_risk_scores",
 ]
 
 STATE_TABLES = [

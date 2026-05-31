@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from recall_risk.storage.postgres import fetch_latest_risk_scores
+from recall_risk.storage.postgres import fetch_model_latest_risk_scores
 from recall_risk.storage.postgres import ping_database
 
 app = FastAPI(title="Vehicle Recall Risk API")
@@ -42,6 +43,31 @@ class RiskScoreResponse(BaseModel):
     complaint_spike_z: float | None
     baseline_risk_score: float | None = Field(
         description="Complaint spike score. This is not a calibrated recall probability."
+    )
+
+
+class ModelRiskScoreResponse(BaseModel):
+    load_run_id: str | None = None
+    source_run_id: str | None = None
+    model_version: str | None = None
+    model_type: str | None = None
+    model_library: str | None = None
+    scoring_method: str | None = None
+    scored_at_utc: datetime | None = None
+    rank: int | None
+    make: str
+    model: str
+    model_year: int | None
+    component: str | None
+    week_start: date | None
+    complaint_count: int | None
+    severe_complaint_count: int | None
+    complaint_spike_z: float | None
+    baseline_risk_score: float | None = Field(
+        description="Rule baseline complaint spike score used as an input feature."
+    )
+    logistic_risk_score: float | None = Field(
+        description="scikit-learn logistic model score. Not yet calibrated as a recall probability."
     )
 
 
@@ -78,3 +104,23 @@ def latest_risk_scores(
         raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
 
     return [RiskScoreResponse(**row) for row in rows]
+
+
+@app.get("/risk-scores/model/latest")
+def model_latest_risk_scores(
+    limit: int = Query(default=25, ge=1, le=100),
+    make: str | None = Query(default=None, min_length=1),
+    model: str | None = Query(default=None, min_length=1),
+    component: str | None = Query(default=None, min_length=1),
+) -> list[ModelRiskScoreResponse]:
+    try:
+        rows = fetch_model_latest_risk_scores(
+            limit=limit,
+            make=make,
+            model=model,
+            component=component,
+        )
+    except PsycopgError as exc:
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+
+    return [ModelRiskScoreResponse(**row) for row in rows]

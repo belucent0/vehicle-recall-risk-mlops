@@ -91,6 +91,7 @@ sample API smoke:
 docker compose up -d api
 Invoke-WebRequest -UseBasicParsing http://localhost:28000/health/db
 Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/latest?limit=3"
+Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/model/latest?limit=3"
 ```
 
 주의:
@@ -145,6 +146,7 @@ http://localhost:28000
 Invoke-WebRequest -UseBasicParsing http://localhost:28000/health
 Invoke-WebRequest -UseBasicParsing http://localhost:28000/health/db
 Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/latest?limit=3"
+Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/model/latest?limit=3"
 ```
 
 기대 결과:
@@ -153,6 +155,7 @@ Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/latest?li
 GET /health: 200
 GET /health/db: 200
 GET /risk-scores/latest?limit=3: 200
+GET /risk-scores/model/latest?limit=3: 200
 ```
 
 ## 4. Airflow 실행
@@ -208,6 +211,7 @@ normalize_backfill
 build_features_labels
 train_model
 score_batch
+score_latest
 generate_latest_risk_report
 load_postgres
 log_mlflow
@@ -452,6 +456,10 @@ train_model_backfill.py
 score_batch_backfill.py
   -> baseline_test_predictions.csv
   -> baseline_model_summary.json
+
+score_latest_backfill.py
+  -> model_latest_risk_scores.csv
+  -> model_latest_risk_summary.json
 ```
 
 Current Airflow processing DAG task order:
@@ -462,6 +470,7 @@ normalize_backfill
 build_features_labels
 train_model
 score_batch
+score_latest
 generate_latest_risk_report
 load_postgres
 log_mlflow
@@ -474,3 +483,40 @@ python pipelines/train_baseline_backfill.py ...
 ```
 
 still works, but it is now only a wrapper around the two split scripts.
+
+## 14. Model-based latest risk scores
+
+Run model-based latest scoring:
+
+```powershell
+python pipelines/score_latest_backfill.py --run-id 20260515T114046Z --top-k 25
+```
+
+Load into PostgreSQL:
+
+```powershell
+python pipelines/load_postgres.py --run-id 20260515T114046Z --apply-schema
+```
+
+Call the model-based endpoint:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/model/latest?limit=3"
+```
+
+Inspect the serving view:
+
+```powershell
+docker compose exec postgres psql -U recall_user -d recall_risk -c "
+select load_run_id, source_run_id, model_version, scoring_method, count(*)
+from recall_risk.v_model_latest_risk_scores
+group by load_run_id, source_run_id, model_version, scoring_method;
+"
+```
+
+Current caveat:
+
+```text
+The logistic score is a ranking signal.
+It is not yet calibrated as an actual recall probability.
+```

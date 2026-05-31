@@ -127,6 +127,7 @@ API:
 GET /health: 200
 GET /health/db: 200
 GET /risk-scores/latest?limit=3: 200
+GET /risk-scores/model/latest?limit=3: 200
 ```
 
 MLflow:
@@ -311,4 +312,40 @@ Details:
 
 ```text
 docs/TRAIN_SCORE_SPLIT_RESULTS.md
+```
+
+## Model-based latest scoring verification
+
+```text
+score_latest_backfill.py: done
+model_latest_risk_scores.csv: done
+recall_risk.model_latest_risk_scores: done
+recall_risk.v_model_latest_risk_scores: done
+GET /risk-scores/model/latest: done
+```
+
+Verified values:
+
+```text
+source_run_id: 20260515T114046Z
+latest_week: 2026-05-11
+rows scored: 167
+rows output: 25
+model_version: sklearn_logistic_v1
+scoring_method: sklearn_logistic_latest_week
+```
+
+Verified Airflow run:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__model_latest_scoring_20260601T010000
+state: success
+task order: build_features_labels -> train_model -> score_batch -> score_latest -> report/load/mlflow
+```
+
+Details:
+
+```text
+docs/MODEL_LATEST_RISK_SCORE_RESULTS.md
 ```

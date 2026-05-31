@@ -240,7 +240,10 @@ def main() -> int:
     summary_path = processed_run_dir / "baseline_model_summary.json"
     coefficients_path = processed_run_dir / "baseline_logistic_coefficients.csv"
     predictions_path = processed_run_dir / "baseline_test_predictions.csv"
+    model_latest_scores_path = processed_run_dir / "model_latest_risk_scores.csv"
+    model_latest_summary_path = processed_run_dir / "model_latest_risk_summary.json"
     report_path = REPORTS_DIR / "backfill_baseline_model_latest.md"
+    model_latest_report_path = REPORTS_DIR / "model_latest_risk_scores_latest.md"
 
     summary = read_json(summary_path)
     sklearn_model_path = resolve_project_path(summary.get("model_artifact"))
@@ -258,6 +261,13 @@ def main() -> int:
         model_artifact_path,
         report_path,
     ]
+    for optional_path in [
+        model_latest_scores_path,
+        model_latest_summary_path,
+        model_latest_report_path,
+    ]:
+        if optional_path.exists():
+            artifact_paths.append(optional_path)
     if sklearn_model_path and sklearn_model_path.exists():
         artifact_paths.append(sklearn_model_path)
     if args.log_predictions:

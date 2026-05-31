@@ -304,3 +304,53 @@ Next:
 ```text
 Use MLflow model artifact/alias as the scoring input, or add a model promotion gate.
 ```
+
+## R9. Model-based latest risk scoring and API
+
+Status: done
+
+Implemented a production-like latest-week scoring path using the trained
+scikit-learn model.
+
+```text
+pipelines/score_latest_backfill.py
+  -> loads sklearn_logistic_pipeline.joblib
+  -> scores latest weekly_features rows
+  -> model_latest_risk_scores.csv
+  -> model_latest_risk_summary.json
+```
+
+PostgreSQL/API:
+
+```text
+recall_risk.model_latest_risk_scores: done
+recall_risk.v_model_latest_risk_scores: done
+GET /risk-scores/model/latest: done
+```
+
+Airflow task sequence:
+
+```text
+build_features_labels
+  -> train_model
+  -> score_batch
+  -> score_latest
+  -> generate_latest_risk_report
+  -> load_postgres
+  -> log_mlflow
+```
+
+Verified:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__model_latest_scoring_20260601T010000
+state: success
+```
+
+Next:
+
+```text
+Use MLflow model artifact/alias as the scoring input.
+Add a promotion gate before model_latest scoring is published.
+```
