@@ -150,6 +150,76 @@ CREATE TABLE IF NOT EXISTS recall_risk.baseline_logistic_coefficients (
     coefficient TEXT
 );
 
+CREATE TABLE IF NOT EXISTS recall_risk.ingestion_state (
+    table_name TEXT NOT NULL,
+    load_run_id TEXT NOT NULL,
+    dataset TEXT NOT NULL,
+    source_path TEXT,
+    status TEXT NOT NULL,
+    row_count TEXT,
+    inserted_count TEXT,
+    skipped_count TEXT,
+    started_at_utc TEXT,
+    completed_at_utc TEXT,
+    PRIMARY KEY (table_name, load_run_id)
+);
+
+CREATE TABLE IF NOT EXISTS recall_risk.raw_record_index (
+    table_name TEXT NOT NULL,
+    record_hash TEXT NOT NULL,
+    first_seen_run_id TEXT,
+    last_seen_run_id TEXT,
+    seen_count INTEGER DEFAULT 1,
+    first_seen_at_utc TEXT,
+    last_seen_at_utc TEXT,
+    PRIMARY KEY (table_name, record_hash)
+);
+
+ALTER TABLE recall_risk.backfill_manifest
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.complaints
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.recalls
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.weekly_features
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.training_dataset
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.training_dataset_labeled_only
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.latest_risk_scores
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.baseline_test_predictions
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
+ALTER TABLE recall_risk.baseline_logistic_coefficients
+    ADD COLUMN IF NOT EXISTS load_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
+    ADD COLUMN IF NOT EXISTS record_hash TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_complaints_entity
     ON recall_risk.complaints (make, model, model_year, component_primary);
 
@@ -165,7 +235,65 @@ CREATE INDEX IF NOT EXISTS idx_training_dataset_label
 CREATE INDEX IF NOT EXISTS idx_latest_risk_scores_rank
     ON recall_risk.latest_risk_scores (rank);
 
+CREATE INDEX IF NOT EXISTS idx_ingestion_state_status
+    ON recall_risk.ingestion_state (table_name, status, completed_at_utc);
+
+CREATE INDEX IF NOT EXISTS idx_raw_record_index_last_seen
+    ON recall_risk.raw_record_index (table_name, last_seen_run_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_backfill_manifest_load_hash
+    ON recall_risk.backfill_manifest (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_complaints_load_hash
+    ON recall_risk.complaints (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_recalls_load_hash
+    ON recall_risk.recalls (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_weekly_features_load_hash
+    ON recall_risk.weekly_features (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_training_dataset_load_hash
+    ON recall_risk.training_dataset (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_training_labeled_load_hash
+    ON recall_risk.training_dataset_labeled_only (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_latest_scores_load_hash
+    ON recall_risk.latest_risk_scores (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_baseline_predictions_load_hash
+    ON recall_risk.baseline_test_predictions (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_baseline_coefficients_load_hash
+    ON recall_risk.baseline_logistic_coefficients (load_run_id, record_hash)
+    WHERE load_run_id IS NOT NULL AND load_run_id <> '' AND record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_complaints_record_hash
+    ON recall_risk.complaints (record_hash)
+    WHERE record_hash IS NOT NULL AND record_hash <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_recalls_record_hash
+    ON recall_risk.recalls (record_hash)
+    WHERE record_hash IS NOT NULL AND record_hash <> '';
+
 CREATE OR REPLACE VIEW recall_risk.v_latest_risk_scores AS
+WITH latest_successful_load AS (
+    SELECT load_run_id
+    FROM recall_risk.ingestion_state
+    WHERE table_name = 'recall_risk.latest_risk_scores'
+      AND status = 'success'
+    ORDER BY NULLIF(completed_at_utc, '')::TIMESTAMPTZ DESC NULLS LAST
+    LIMIT 1
+)
 SELECT
     NULLIF(rank, '')::INTEGER AS rank,
     make,
@@ -177,9 +305,22 @@ SELECT
     NULLIF(severe_complaint_count, '')::INTEGER AS severe_complaint_count,
     NULLIF(complaint_spike_z, '')::DOUBLE PRECISION AS complaint_spike_z,
     NULLIF(baseline_risk_score, '')::DOUBLE PRECISION AS baseline_risk_score
-FROM recall_risk.latest_risk_scores;
+FROM recall_risk.latest_risk_scores
+WHERE (
+    EXISTS (SELECT 1 FROM latest_successful_load)
+    AND load_run_id = (SELECT load_run_id FROM latest_successful_load)
+)
+OR NOT EXISTS (SELECT 1 FROM latest_successful_load);
 
 CREATE OR REPLACE VIEW recall_risk.v_training_dataset AS
+WITH latest_successful_load AS (
+    SELECT load_run_id
+    FROM recall_risk.ingestion_state
+    WHERE table_name = 'recall_risk.training_dataset'
+      AND status = 'success'
+    ORDER BY NULLIF(completed_at_utc, '')::TIMESTAMPTZ DESC NULLS LAST
+    LIMIT 1
+)
 SELECT
     make,
     model,
@@ -191,5 +332,9 @@ SELECT
     NULLIF(baseline_risk_score, '')::DOUBLE PRECISION AS baseline_risk_score,
     NULLIF(label_available, '')::INTEGER AS label_available,
     NULLIF(next_90d_recall, '')::INTEGER AS next_90d_recall
-FROM recall_risk.training_dataset;
-
+FROM recall_risk.training_dataset
+WHERE (
+    EXISTS (SELECT 1 FROM latest_successful_load)
+    AND load_run_id = (SELECT load_run_id FROM latest_successful_load)
+)
+OR NOT EXISTS (SELECT 1 FROM latest_successful_load);

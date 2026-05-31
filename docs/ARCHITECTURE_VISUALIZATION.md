@@ -144,7 +144,7 @@ flowchart TB
 수집 DAG 최신 산출물 예시: collect_20260525T171005
 ```
 
-따라서 DAG 간 run_id 전달은 완료됐다. 다음 핵심은 truncate 없는 incremental ingestion이다.
+따라서 DAG 간 run_id 전달은 완료됐다. 또한 `ingestion_state`와 `raw_record_index` 기반의 1차 non-truncating load도 구현됐다.
 
 ## 3. 구현된 1차 handoff 아키텍처
 
@@ -291,7 +291,7 @@ flowchart TB
 flowchart LR
     s0["현재<br/>수집 DAG와 처리 DAG 연결<br/>automatic handoff"]
     s1["Step 1 done<br/>run_id conf 전달<br/>collection -> processing trigger"]
-    s2["Step 2<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
+    s2["Step 2 done<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
     s3["Step 3<br/>training/scoring 분리<br/>model_version 기록"]
     s4["Step 4<br/>MLflow registry + promotion gate"]
     s5["Step 5<br/>monitoring / dashboard / alerts"]
@@ -316,12 +316,12 @@ flowchart LR
 ```text
 Airflow + PostgreSQL + FastAPI + MLflow + CI는 붙었다.
 collection과 processing도 자동 연결됐다.
-하지만 incremental ingestion은 아직 snapshot collector + truncate reload 수준이다.
+incremental ingestion은 1차 구현됐지만, feature generation은 아직 CSV artifact 기반이다.
 ```
 
 다음 구현은 다음 하나가 맞다.
 
 ```text
-PostgreSQL ingestion_state/raw_record_index를 추가하고,
-load_postgres --truncate 의존을 제거한다.
+prediction/model_version metadata를 추가하고,
+training과 scoring 단계를 분리한다.
 ```

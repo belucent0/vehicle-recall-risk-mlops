@@ -103,7 +103,7 @@ with DAG(
     load_postgres = BashOperator(
         task_id="load_postgres",
         bash_command=project_command(
-            f'python pipelines/load_postgres.py --run-id "{RUN_ID_TEMPLATE}" --apply-schema --truncate'
+            f'python pipelines/load_postgres.py --run-id "{RUN_ID_TEMPLATE}" --apply-schema'
         ),
         do_xcom_push=False,
     )

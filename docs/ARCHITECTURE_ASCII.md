@@ -10,8 +10,9 @@ Status note:
 
 ```text
 As of 2026-05-31, collection-to-processing DAG handoff is implemented.
-The remaining major gap is true incremental DB ingestion without truncating
-serving tables.
+First-pass PostgreSQL ingestion_state/raw_record_index support is implemented.
+The remaining major gap is DB-backed feature generation plus explicit
+model_version metadata in prediction/serving outputs.
 ```
 
 ## 1. Current architecture
@@ -189,8 +190,9 @@ run_id.
 
 ## 3. Near-term handoff architecture
 
-This handoff has been implemented. The next implementation should remove the
-destructive truncate-based serving load and introduce ingestion state/dedup.
+This handoff has been implemented. The destructive truncate-based serving load
+has also been removed from the default processing DAG path. Manual truncate is
+still available for local reset.
 
 ```text
                           +----------------------+
@@ -379,7 +381,7 @@ stateful, incremental, DB-backed MLOps architecture.
           |
           v
 +--------------------+
-| Step 2             |
+| Step 2 done        |
 |                    |
 | ingestion_state    |
 | dedupe table       |
@@ -441,8 +443,8 @@ FastAPI
 NEXT
 ====
 
-Replace truncate-based PostgreSQL load with
-incremental ingestion state and dedupe tables.
+Add explicit run_id/model_version metadata to
+prediction outputs and serving views.
 
 
 TARGET

@@ -191,9 +191,38 @@ processing dag_run_id: process_collect_20260531T080049
 processing state: success
 ```
 
-Remaining caveat:
+Remaining caveat after R5:
 
 ```text
-load_postgres still truncates serving tables.
-True incremental DB ingestion is pending.
+Resolved by R6: load_postgres no longer truncates by default in the processing DAG.
+```
+
+## R6. PostgreSQL ingestion state and non-truncating DAG load
+
+Status: done
+
+Implemented first-pass incremental PostgreSQL ingestion support.
+
+```text
+ingestion_state table: done
+raw_record_index table: done
+load_run_id / loaded_at_utc / record_hash metadata: done
+same run_id duplicate load skip: done
+complaints/recalls hash dedupe: done
+nhtsa_recall_risk_mvp load_postgres --truncate removal: done
+```
+
+Verified:
+
+```text
+smoke load first pass: inserted
+smoke load second pass: SKIP already ingested
+Airflow processing DAG without --truncate: success
+full MVP restore with metadata: success
+```
+
+Next:
+
+```text
+Add model_version/run_id metadata to prediction outputs and serving views.
 ```

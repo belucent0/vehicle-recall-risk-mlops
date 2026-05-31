@@ -204,8 +204,8 @@ Current MLOps pipeline status:
 ```text
 Data collection orchestration: verified
 Data processing/model orchestration: verified
-Automatic handoff from collection DAG to processing DAG: pending
-Record-level incremental deduplication: pending
+Automatic handoff from collection DAG to processing DAG: verified
+First-pass PostgreSQL ingestion state/deduplication: verified
 ```
 
 ## DAG handoff verification
@@ -231,5 +231,36 @@ Updated status:
 Collection orchestration: done
 Processing/model orchestration: done
 DAG-to-DAG run_id handoff: done
-Incremental DB ingestion without truncate: pending
+Incremental DB ingestion without default truncate: done
+```
+
+## Incremental ingestion verification
+
+```text
+ingestion_state: done
+raw_record_index: done
+same run_id duplicate skip: done
+processing DAG without --truncate: verified
+```
+
+Verified Airflow run:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__incremental_default_20260531T173500
+state: success
+```
+
+Current limitation:
+
+```text
+Feature generation still uses CSV artifacts.
+Derived tables are appended by run_id.
+Prediction/model_version metadata is pending.
+```
+
+Details:
+
+```text
+docs/INCREMENTAL_INGESTION_RESULTS.md
 ```

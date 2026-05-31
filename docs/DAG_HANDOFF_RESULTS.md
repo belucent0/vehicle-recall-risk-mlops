@@ -151,23 +151,28 @@ Restored full serving counts:
 | latest_risk_scores | 25 |
 | baseline_test_predictions | 293,083 |
 
-## Current caveat
+## Updated ingestion behavior
 
-The handoff is now real, but the downstream processing DAG still uses:
+The handoff is real, and the downstream processing DAG no longer uses truncate
+by default.
+
+```text
+load_postgres.py --apply-schema
+```
+
+`load_postgres.py` now records ingestion state and skips a table if the same
+`table_name + load_run_id` already succeeded.
+
+Manual reset is still available:
 
 ```text
 load_postgres.py --apply-schema --truncate
 ```
 
-That means every processing run replaces the current serving tables.
-
-This is acceptable for the current MVP handoff verification, but it is not yet a
-true incremental production ingestion design.
-
-Next architectural fix:
+Remaining architectural fix:
 
 ```text
-1. Add ingestion_state and raw_record_index tables.
-2. Load new records incrementally instead of truncating all serving tables.
-3. Store prediction rows with run_id and model_version.
+1. Store prediction rows with explicit model_version.
+2. Split training and scoring stages.
+3. Move feature generation toward DB-backed bronze/silver tables.
 ```

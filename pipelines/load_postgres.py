@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import os
 import sys
+import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -149,6 +154,19 @@ ALL_TABLES = [
     "recall_risk.baseline_logistic_coefficients",
 ]
 
+STATE_TABLES = [
+    "recall_risk.raw_record_index",
+    "recall_risk.ingestion_state",
+]
+
+METADATA_COLUMNS = ["load_run_id", "loaded_at_utc", "record_hash"]
+
+RAW_RECORD_INDEX_TABLES = {
+    "recall_risk.backfill_manifest",
+    "recall_risk.complaints",
+    "recall_risk.recalls",
+}
+
 
 def import_psycopg():
     try:
@@ -198,6 +216,26 @@ def apply_schema(conn, schema_path: Path) -> None:
     conn.commit()
 
 
+def split_table_name(table_name: str) -> tuple[str, str]:
+    parts = table_name.split(".", maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError(f"Expected schema-qualified table name: {table_name}")
+    return parts[0], parts[1]
+
+
+def table_identifier(table_name: str):
+    from psycopg import sql
+
+    schema, name = split_table_name(table_name)
+    return sql.Identifier(schema, name)
+
+
+def column_identifiers(column_names: list[str]):
+    from psycopg import sql
+
+    return sql.SQL(", ").join(sql.Identifier(column_name) for column_name in column_names)
+
+
 def truncate_tables(conn, table_names: list[str]) -> None:
     with conn.cursor() as cur:
         for table_name in table_names:
@@ -205,22 +243,338 @@ def truncate_tables(conn, table_names: list[str]) -> None:
     conn.commit()
 
 
-def copy_csv(conn, table_name: str, csv_path: Path) -> int:
-    if not csv_path.exists():
-        print(f"SKIP missing file: {display_path(csv_path)}")
-        return 0
+def now_utc() -> str:
+    return datetime.now(UTC).isoformat()
 
-    # Count data rows for reporting. This is cheap enough for MVP-sized CSVs.
-    with csv_path.open("r", encoding="utf-8", newline="") as f:
-        row_count = max(0, sum(1 for _ in f) - 1)
+
+def row_hash(row: dict[str, str], headers: list[str]) -> str:
+    payload = "\x1f".join(f"{header}={row.get(header, '') or ''}" for header in headers)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def build_augmented_csv(
+    *,
+    table_name: str,
+    csv_path: Path,
+    load_run_id: str,
+    loaded_at_utc: str,
+) -> tuple[Path, list[str], int]:
+    with csv_path.open("r", encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source)
+        if not reader.fieldnames:
+            raise ValueError(f"CSV has no header: {display_path(csv_path)}")
+
+        csv_headers = [
+            header for header in reader.fieldnames
+            if header not in METADATA_COLUMNS
+        ]
+        output_columns = csv_headers + METADATA_COLUMNS
+
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            newline="",
+            suffix=".csv",
+            prefix=f"load_{table_name.replace('.', '_')}_",
+            delete=False,
+        ) as temp_file:
+            temp_path = Path(temp_file.name)
+            writer = csv.DictWriter(temp_file, fieldnames=output_columns, lineterminator="\n")
+            writer.writeheader()
+
+            row_count = 0
+            for row in reader:
+                output_row = {header: row.get(header, "") or "" for header in csv_headers}
+                output_row["load_run_id"] = load_run_id
+                output_row["loaded_at_utc"] = loaded_at_utc
+                output_row["record_hash"] = row_hash(output_row, csv_headers)
+                writer.writerow(output_row)
+                row_count += 1
+
+    return temp_path, output_columns, row_count
+
+
+def mark_ingestion_running(
+    conn,
+    *,
+    table_name: str,
+    load_run_id: str,
+    dataset: str,
+    source_path: Path,
+    row_count: int,
+    started_at_utc: str,
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO recall_risk.ingestion_state (
+                table_name,
+                load_run_id,
+                dataset,
+                source_path,
+                status,
+                row_count,
+                inserted_count,
+                skipped_count,
+                started_at_utc,
+                completed_at_utc
+            )
+            VALUES (%s, %s, %s, %s, 'running', %s, NULL, NULL, %s, NULL)
+            ON CONFLICT (table_name, load_run_id)
+            DO UPDATE SET
+                dataset = EXCLUDED.dataset,
+                source_path = EXCLUDED.source_path,
+                status = 'running',
+                row_count = EXCLUDED.row_count,
+                inserted_count = NULL,
+                skipped_count = NULL,
+                started_at_utc = EXCLUDED.started_at_utc,
+                completed_at_utc = NULL
+            """,
+            (
+                table_name,
+                load_run_id,
+                dataset,
+                display_path(source_path),
+                str(row_count),
+                started_at_utc,
+            ),
+        )
+    conn.commit()
+
+
+def mark_ingestion_finished(
+    conn,
+    *,
+    table_name: str,
+    load_run_id: str,
+    status: str,
+    row_count: int,
+    inserted_count: int,
+    completed_at_utc: str,
+) -> None:
+    skipped_count = max(0, row_count - inserted_count)
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE recall_risk.ingestion_state
+            SET
+                status = %s,
+                row_count = %s,
+                inserted_count = %s,
+                skipped_count = %s,
+                completed_at_utc = %s
+            WHERE table_name = %s
+              AND load_run_id = %s
+            """,
+            (
+                status,
+                str(row_count),
+                str(inserted_count),
+                str(skipped_count),
+                completed_at_utc,
+                table_name,
+                load_run_id,
+            ),
+        )
+    conn.commit()
+
+
+def update_raw_record_index(
+    conn,
+    *,
+    temp_table_name: str,
+    table_name: str,
+    load_run_id: str,
+    loaded_at_utc: str,
+) -> None:
+    from psycopg import sql
+
+    statement = sql.SQL(
+        """
+        INSERT INTO recall_risk.raw_record_index (
+            table_name,
+            record_hash,
+            first_seen_run_id,
+            last_seen_run_id,
+            seen_count,
+            first_seen_at_utc,
+            last_seen_at_utc
+        )
+        SELECT
+            %(table_name)s,
+            record_hash,
+            %(load_run_id)s,
+            %(load_run_id)s,
+            1,
+            %(loaded_at_utc)s,
+            %(loaded_at_utc)s
+        FROM (
+            SELECT DISTINCT record_hash
+            FROM {temp_table}
+            WHERE record_hash IS NOT NULL
+              AND record_hash <> ''
+        ) AS records
+        ON CONFLICT (table_name, record_hash)
+        DO UPDATE SET
+            last_seen_run_id = EXCLUDED.last_seen_run_id,
+            seen_count = recall_risk.raw_record_index.seen_count + 1,
+            last_seen_at_utc = EXCLUDED.last_seen_at_utc
+        """
+    ).format(temp_table=sql.Identifier(temp_table_name))
 
     with conn.cursor() as cur:
-        with csv_path.open("rb") as f:
-            with cur.copy(f"COPY {table_name} FROM STDIN WITH (FORMAT csv, HEADER true)") as copy:
-                while data := f.read(1024 * 1024):
-                    copy.write(data)
-    conn.commit()
-    return row_count
+        cur.execute(
+            statement,
+            {
+                "table_name": table_name,
+                "load_run_id": load_run_id,
+                "loaded_at_utc": loaded_at_utc,
+            },
+        )
+
+
+def successful_ingestion_result(
+    conn,
+    *,
+    table_name: str,
+    load_run_id: str,
+) -> dict[str, int] | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT row_count, inserted_count, skipped_count
+            FROM recall_risk.ingestion_state
+            WHERE table_name = %s
+              AND load_run_id = %s
+              AND status = 'success'
+            """,
+            (table_name, load_run_id),
+        )
+        row = cur.fetchone()
+
+    if row is None:
+        return None
+
+    return {
+        "rows": int(row[0] or 0),
+        "inserted": int(row[1] or 0),
+        "skipped": int(row[2] or 0),
+    }
+
+
+def copy_csv(
+    conn,
+    table_name: str,
+    csv_path: Path,
+    *,
+    load_run_id: str,
+    dataset: str,
+) -> dict[str, int]:
+    if not csv_path.exists():
+        print(f"SKIP missing file: {display_path(csv_path)}")
+        return {"rows": 0, "inserted": 0, "skipped": 0}
+
+    previous_result = successful_ingestion_result(
+        conn,
+        table_name=table_name,
+        load_run_id=load_run_id,
+    )
+    if previous_result is not None:
+        print(f"  SKIP already ingested: table={table_name} run_id={load_run_id}")
+        return previous_result
+
+    from psycopg import sql
+
+    loaded_at_utc = now_utc()
+    temp_csv_path, copy_columns, row_count = build_augmented_csv(
+        table_name=table_name,
+        csv_path=csv_path,
+        load_run_id=load_run_id,
+        loaded_at_utc=loaded_at_utc,
+    )
+    temp_table_name = f"tmp_load_{uuid4().hex}"
+    mark_ingestion_running(
+        conn,
+        table_name=table_name,
+        load_run_id=load_run_id,
+        dataset=dataset,
+        source_path=csv_path,
+        row_count=row_count,
+        started_at_utc=loaded_at_utc,
+    )
+
+    inserted_count = 0
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("CREATE TEMP TABLE {} (LIKE {} INCLUDING DEFAULTS) ON COMMIT DROP").format(
+                    sql.Identifier(temp_table_name),
+                    table_identifier(table_name),
+                )
+            )
+
+            copy_statement = sql.SQL(
+                "COPY {} ({}) FROM STDIN WITH (FORMAT csv, HEADER true)"
+            ).format(
+                sql.Identifier(temp_table_name),
+                column_identifiers(copy_columns),
+            )
+            with temp_csv_path.open("rb") as f:
+                with cur.copy(copy_statement) as copy:
+                    while data := f.read(1024 * 1024):
+                        copy.write(data)
+
+            insert_statement = sql.SQL(
+                "INSERT INTO {} ({}) SELECT {} FROM {} ON CONFLICT DO NOTHING"
+            ).format(
+                table_identifier(table_name),
+                column_identifiers(copy_columns),
+                column_identifiers(copy_columns),
+                sql.Identifier(temp_table_name),
+            )
+            cur.execute(insert_statement)
+            inserted_count = max(0, cur.rowcount)
+
+            if table_name in RAW_RECORD_INDEX_TABLES:
+                update_raw_record_index(
+                    conn,
+                    temp_table_name=temp_table_name,
+                    table_name=table_name,
+                    load_run_id=load_run_id,
+                    loaded_at_utc=loaded_at_utc,
+                )
+
+        conn.commit()
+        mark_ingestion_finished(
+            conn,
+            table_name=table_name,
+            load_run_id=load_run_id,
+            status="success",
+            row_count=row_count,
+            inserted_count=inserted_count,
+            completed_at_utc=now_utc(),
+        )
+    except Exception:
+        conn.rollback()
+        mark_ingestion_finished(
+            conn,
+            table_name=table_name,
+            load_run_id=load_run_id,
+            status="failed",
+            row_count=row_count,
+            inserted_count=inserted_count,
+            completed_at_utc=now_utc(),
+        )
+        raise
+    finally:
+        temp_csv_path.unlink(missing_ok=True)
+
+    return {
+        "rows": row_count,
+        "inserted": inserted_count,
+        "skipped": max(0, row_count - inserted_count),
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -251,12 +605,22 @@ def main() -> int:
 
         if args.truncate:
             print("Truncating target tables...")
-            truncate_tables(conn, ALL_TABLES)
+            truncate_tables(conn, ALL_TABLES + STATE_TABLES)
 
         for table_name, csv_path in loads:
             print(f"Loading {display_path(csv_path)} -> {table_name}")
-            row_count = copy_csv(conn, table_name, csv_path)
-            print(f"  rows={row_count}")
+            result = copy_csv(
+                conn,
+                table_name,
+                csv_path,
+                load_run_id=args.run_id,
+                dataset=args.dataset,
+            )
+            print(
+                f"  rows={result['rows']} "
+                f"inserted={result['inserted']} "
+                f"skipped={result['skipped']}"
+            )
 
     print("PostgreSQL load complete.")
     return 0
