@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi import HTTPException
@@ -25,6 +26,11 @@ class DatabaseHealthResponse(BaseModel):
 
 
 class RiskScoreResponse(BaseModel):
+    load_run_id: str | None = None
+    source_run_id: str | None = None
+    model_version: str | None = None
+    scoring_method: str | None = None
+    scored_at_utc: datetime | None = None
     rank: int | None
     make: str
     model: str

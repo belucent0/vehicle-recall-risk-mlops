@@ -28,7 +28,14 @@ NUMERIC_FEATURES = [
     "baseline_risk_score",
 ]
 
+LOGISTIC_MODEL_VERSION = "sklearn_logistic_v1"
+
 PREDICTION_COLUMNS = [
+    "source_run_id",
+    "model_version",
+    "model_type",
+    "model_library",
+    "scored_at_utc",
     "split",
     "make",
     "model",
@@ -48,7 +55,15 @@ PREDICTION_COLUMNS = [
     "baseline_risk_score",
 ]
 
-COEFFICIENT_COLUMNS = ["feature", "coefficient"]
+COEFFICIENT_COLUMNS = [
+    "source_run_id",
+    "model_version",
+    "model_type",
+    "model_library",
+    "scored_at_utc",
+    "feature",
+    "coefficient",
+]
 
 
 @dataclass
@@ -222,11 +237,21 @@ def score_rows(
     rows: list[dict[str, Any]],
     model: LogisticModel,
     split_name: str,
+    *,
+    source_run_id: str = "",
+    model_version: str = LOGISTIC_MODEL_VERSION,
+    scored_at_utc: str = "",
+    model_library: str = "scikit-learn",
 ) -> list[dict[str, Any]]:
     scored = []
     logistic_scores = model.predict_proba_rows(rows)
     for row, logistic_score in zip(rows, logistic_scores, strict=True):
         output = dict(row)
+        output["source_run_id"] = source_run_id
+        output["model_version"] = model_version
+        output["model_type"] = model.model_type
+        output["model_library"] = model_library
+        output["scored_at_utc"] = scored_at_utc
         output["split"] = split_name
         output["rule_score"] = parse_float(row.get("baseline_risk_score"))
         output["logistic_score"] = round(logistic_score, 8)
@@ -290,24 +315,48 @@ def evaluate_scores(
     }
 
 
-def coefficient_rows(model: LogisticModel) -> list[dict[str, Any]]:
+def coefficient_rows(
+    model: LogisticModel,
+    *,
+    source_run_id: str = "",
+    model_version: str = LOGISTIC_MODEL_VERSION,
+    scored_at_utc: str = "",
+    model_library: str = "scikit-learn",
+) -> list[dict[str, Any]]:
     classifier = model.pipeline.named_steps["classifier"]
     intercept = getattr(classifier, "intercept_", [0.0])
     coefficients = getattr(classifier, "coef_", [[0.0] * len(model.features)])
 
-    rows = [{"feature": "__intercept__", "coefficient": round(float(intercept[0]), 8)}]
+    def metadata_row(feature: str, coefficient: float) -> dict[str, Any]:
+        return {
+            "source_run_id": source_run_id,
+            "model_version": model_version,
+            "model_type": model.model_type,
+            "model_library": model_library,
+            "scored_at_utc": scored_at_utc,
+            "feature": feature,
+            "coefficient": round(coefficient, 8),
+        }
+
+    rows = [metadata_row("__intercept__", float(intercept[0]))]
     rows.extend(
-        {"feature": feature, "coefficient": round(float(weight), 8)}
+        metadata_row(feature, float(weight))
         for feature, weight in zip(model.features, coefficients[0], strict=True)
     )
     return rows
 
 
-def save_model_artifact(model: LogisticModel, path: Path) -> Path:
+def save_model_artifact(
+    model: LogisticModel,
+    path: Path,
+    *,
+    model_version: str = LOGISTIC_MODEL_VERSION,
+) -> Path:
     import joblib
 
     payload = {
         "artifact_type": "sklearn_logistic_pipeline",
+        "model_version": model_version,
         "model_type": model.model_type,
         "features": model.features,
         "pipeline": model.pipeline,

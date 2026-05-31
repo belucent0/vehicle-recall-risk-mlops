@@ -292,7 +292,7 @@ flowchart LR
     s0["현재<br/>수집 DAG와 처리 DAG 연결<br/>automatic handoff"]
     s1["Step 1 done<br/>run_id conf 전달<br/>collection -> processing trigger"]
     s2["Step 2 done<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
-    s3["Step 3<br/>training/scoring 분리<br/>model_version 기록"]
+    s3["Step 3 partial<br/>model_version 기록 완료<br/>training/scoring 분리 pending"]
     s4["Step 4<br/>MLflow registry + promotion gate"]
     s5["Step 5<br/>monitoring / dashboard / alerts"]
 
@@ -306,7 +306,7 @@ flowchart LR
 | 1 | `dag_run.conf["run_id"]` 기반 처리 DAG 실행 | done |
 | 2 | `TriggerDagRunOperator` 적용 | done |
 | 3 | ingestion state/dedupe table 추가 | snapshot 반복 수집에서 true incremental ingestion으로 전환 |
-| 4 | prediction/model_version metadata 추가 | 포트폴리오에서 MLOps maturity를 설명 가능 |
+| 4 | prediction/model_version metadata 추가 | done |
 | 5 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
 
 ## 6. 한 줄 판단
@@ -322,6 +322,6 @@ incremental ingestion은 1차 구현됐지만, feature generation은 아직 CSV 
 다음 구현은 다음 하나가 맞다.
 
 ```text
-prediction/model_version metadata를 추가하고,
-training과 scoring 단계를 분리한다.
+training과 batch scoring 단계를 분리하고,
+MLflow model artifact URI를 scoring metadata에 연결한다.
 ```

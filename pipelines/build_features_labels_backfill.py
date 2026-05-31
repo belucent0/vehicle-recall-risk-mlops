@@ -181,7 +181,13 @@ def main() -> int:
 
     print("Adding rolling features...", flush=True)
     feature_rows = add_rolling_features(weekly_rows)
-    risk_rows = latest_week_scores(feature_rows, top_k=args.top_k)
+    built_at_utc = datetime.now(UTC).isoformat()
+    risk_rows = latest_week_scores(
+        feature_rows,
+        top_k=args.top_k,
+        source_run_id=run_id,
+        scored_at_utc=built_at_utc,
+    )
 
     features_path = output_dir / "weekly_features.csv"
     risk_scores_path = output_dir / "latest_risk_scores.csv"
@@ -204,7 +210,7 @@ def main() -> int:
 
     summary = {
         "source_run_id": run_id,
-        "built_at_utc": datetime.now(UTC).isoformat(),
+        "built_at_utc": built_at_utc,
         "data_as_of_date": args.data_as_of_date,
         "horizon_days": args.horizon_days,
         "output_dir": display_path(output_dir),
@@ -238,4 +244,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

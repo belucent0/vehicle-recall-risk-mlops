@@ -11,8 +11,9 @@ Status note:
 ```text
 As of 2026-05-31, collection-to-processing DAG handoff is implemented.
 First-pass PostgreSQL ingestion_state/raw_record_index support is implemented.
-The remaining major gap is DB-backed feature generation plus explicit
-model_version metadata in prediction/serving outputs.
+Model/scoring version metadata is implemented in prediction and serving outputs.
+The remaining major gap is splitting training and batch scoring, then moving
+feature generation toward DB-backed bronze/silver tables.
 ```
 
 ## 1. Current architecture
@@ -443,8 +444,8 @@ FastAPI
 NEXT
 ====
 
-Add explicit run_id/model_version metadata to
-prediction outputs and serving views.
+Split training and batch scoring into separate
+pipeline/DAG stages.
 
 
 TARGET

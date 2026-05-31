@@ -213,13 +213,13 @@ Remaining gaps:
 ```text
 1. Feature generation still starts from CSV artifacts, not from PostgreSQL bronze tables.
 2. The loader appends derived tables by run_id instead of maintaining compact latest-only tables.
-3. There is no model_version column in prediction outputs yet.
+3. Training and scoring are still coupled in the baseline script.
 4. raw_record_index is hash-based, not source-key based for every endpoint.
 ```
 
 Next step:
 
 ```text
-Add run_id/model_version metadata to prediction tables and serving views,
-then split training and scoring as separate DAG stages.
+Split training and scoring as separate DAG stages and connect scoring metadata
+to MLflow model artifact URI.
 ```

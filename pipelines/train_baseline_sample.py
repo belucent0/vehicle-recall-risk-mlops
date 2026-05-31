@@ -14,6 +14,7 @@ if str(SRC_DIR) not in sys.path:
 
 from recall_risk.models.baseline import (  # noqa: E402
     COEFFICIENT_COLUMNS,
+    LOGISTIC_MODEL_VERSION,
     PREDICTION_COLUMNS,
     coefficient_rows,
     evaluate_scores,
@@ -133,8 +134,23 @@ def main() -> int:
     train_rows, test_rows, cutoff_date = temporal_train_test_split(rows)
 
     model = train_logistic_regression(train_rows, epochs=args.epochs, max_iter=args.max_iter)
-    train_predictions = score_rows(train_rows, model, "train")
-    test_predictions = score_rows(test_rows, model, "test")
+    built_at_utc = datetime.now(UTC).isoformat()
+    train_predictions = score_rows(
+        train_rows,
+        model,
+        "train",
+        source_run_id=run_id,
+        model_version=LOGISTIC_MODEL_VERSION,
+        scored_at_utc=built_at_utc,
+    )
+    test_predictions = score_rows(
+        test_rows,
+        model,
+        "test",
+        source_run_id=run_id,
+        model_version=LOGISTIC_MODEL_VERSION,
+        scored_at_utc=built_at_utc,
+    )
     all_predictions = train_predictions + test_predictions
 
     predictions_path = processed_run_dir / "baseline_predictions.csv"
@@ -142,18 +158,28 @@ def main() -> int:
     model_artifact_path = processed_run_dir / "sklearn_logistic_pipeline.joblib"
 
     write_csv_rows(predictions_path, all_predictions, PREDICTION_COLUMNS)
-    write_csv_rows(coefficients_path, coefficient_rows(model), COEFFICIENT_COLUMNS)
-    save_model_artifact(model, model_artifact_path)
+    write_csv_rows(
+        coefficients_path,
+        coefficient_rows(
+            model,
+            source_run_id=run_id,
+            model_version=LOGISTIC_MODEL_VERSION,
+            scored_at_utc=built_at_utc,
+        ),
+        COEFFICIENT_COLUMNS,
+    )
+    save_model_artifact(model, model_artifact_path, model_version=LOGISTIC_MODEL_VERSION)
 
     summary = {
         "source_run_id": run_id,
-        "built_at_utc": datetime.now(UTC).isoformat(),
+        "built_at_utc": built_at_utc,
         "input_dataset": str(dataset_path.relative_to(PROJECT_ROOT)),
         "predictions_csv": str(predictions_path.relative_to(PROJECT_ROOT)),
         "coefficients_csv": str(coefficients_path.relative_to(PROJECT_ROOT)),
         "model_artifact": str(model_artifact_path.relative_to(PROJECT_ROOT)),
         "model_type": model.model_type,
         "model_library": "scikit-learn",
+        "model_version": LOGISTIC_MODEL_VERSION,
         "split": {
             "cutoff_as_of_date": cutoff_date,
             "train": split_summary(train_rows),

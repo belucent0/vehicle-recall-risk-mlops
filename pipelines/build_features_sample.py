@@ -110,7 +110,13 @@ def main() -> int:
 
     weekly_rows = aggregate_weekly_complaints(complaints)
     feature_rows = add_rolling_features(weekly_rows)
-    risk_rows = latest_week_scores(feature_rows, top_k=args.top_k)
+    built_at_utc = datetime.now(UTC).isoformat()
+    risk_rows = latest_week_scores(
+        feature_rows,
+        top_k=args.top_k,
+        source_run_id=run_id,
+        scored_at_utc=built_at_utc,
+    )
 
     output_dir = PROCESSED_DIR / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -124,7 +130,7 @@ def main() -> int:
 
     summary = {
         "source_run_id": run_id,
-        "built_at_utc": datetime.now(UTC).isoformat(),
+        "built_at_utc": built_at_utc,
         "output_dir": str(output_dir.relative_to(PROJECT_ROOT)),
         "weekly_features_csv": str(features_path.relative_to(PROJECT_ROOT)),
         "latest_risk_scores_csv": str(risk_scores_path.relative_to(PROJECT_ROOT)),
@@ -148,4 +154,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

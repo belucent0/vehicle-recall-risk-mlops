@@ -29,6 +29,10 @@ WEEKLY_FEATURE_COLUMNS = [
 ]
 
 RISK_SCORE_COLUMNS = [
+    "source_run_id",
+    "model_version",
+    "scoring_method",
+    "scored_at_utc",
     "rank",
     "make",
     "model",
@@ -45,6 +49,9 @@ RISK_SCORE_COLUMNS = [
     "complaint_spike_z",
     "baseline_risk_score",
 ]
+
+RULE_BASELINE_MODEL_VERSION = "rule_baseline_v1"
+RULE_BASELINE_SCORING_METHOD = "complaint_spike_rule"
 
 
 @dataclass(frozen=True)
@@ -270,7 +277,15 @@ def add_rolling_features(weekly_rows: list[dict[str, Any]]) -> list[dict[str, An
     return output
 
 
-def latest_week_scores(feature_rows: list[dict[str, Any]], top_k: int = 25) -> list[dict[str, Any]]:
+def latest_week_scores(
+    feature_rows: list[dict[str, Any]],
+    top_k: int = 25,
+    *,
+    source_run_id: str = "",
+    model_version: str = RULE_BASELINE_MODEL_VERSION,
+    scoring_method: str = RULE_BASELINE_SCORING_METHOD,
+    scored_at_utc: str = "",
+) -> list[dict[str, Any]]:
     if not feature_rows:
         return []
     latest_week = max(row["week_start"] for row in feature_rows)
@@ -280,7 +295,10 @@ def latest_week_scores(feature_rows: list[dict[str, Any]], top_k: int = 25) -> l
     output = []
     for idx, row in enumerate(rows[:top_k], start=1):
         item = {column: row.get(column, "") for column in RISK_SCORE_COLUMNS}
+        item["source_run_id"] = source_run_id
+        item["model_version"] = model_version
+        item["scoring_method"] = scoring_method
+        item["scored_at_utc"] = scored_at_utc
         item["rank"] = idx
         output.append(item)
     return output
-

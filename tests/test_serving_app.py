@@ -28,6 +28,11 @@ def test_latest_risk_scores_uses_query_params(monkeypatch) -> None:
         assert component == "ENGINE"
         return [
             {
+                "load_run_id": "test_load",
+                "source_run_id": "test_source",
+                "model_version": "rule_baseline_v1",
+                "scoring_method": "complaint_spike_rule",
+                "scored_at_utc": "2026-05-31T11:38:41Z",
                 "rank": 1,
                 "make": "FORD",
                 "model": "BRONCO SPORT",
@@ -49,6 +54,11 @@ def test_latest_risk_scores_uses_query_params(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json() == [
         {
+            "load_run_id": "test_load",
+            "source_run_id": "test_source",
+            "model_version": "rule_baseline_v1",
+            "scoring_method": "complaint_spike_rule",
+            "scored_at_utc": "2026-05-31T11:38:41Z",
             "rank": 1,
             "make": "FORD",
             "model": "BRONCO SPORT",
@@ -61,4 +71,3 @@ def test_latest_risk_scores_uses_query_params(monkeypatch) -> None:
             "baseline_risk_score": 2.4749,
         }
     ]
-

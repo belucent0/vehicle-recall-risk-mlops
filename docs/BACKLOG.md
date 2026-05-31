@@ -224,5 +224,40 @@ full MVP restore with metadata: success
 Next:
 
 ```text
-Add model_version/run_id metadata to prediction outputs and serving views.
+Resolved by R7: model_version/run_id metadata is now in prediction outputs and serving views.
+```
+
+## R7. Prediction/model version metadata
+
+Status: done
+
+Implemented model/scoring metadata in batch outputs, PostgreSQL, and the API.
+
+```text
+latest_risk_scores:
+  source_run_id
+  model_version
+  scoring_method
+  scored_at_utc
+
+baseline_test_predictions:
+  source_run_id
+  model_version
+  model_type
+  model_library
+  scored_at_utc
+```
+
+Verified:
+
+```text
+v_latest_risk_scores model_version: rule_baseline_v1
+baseline_test_predictions model_version: sklearn_logistic_v1
+GET /risk-scores/latest includes model_version metadata
+```
+
+Next:
+
+```text
+Split training and batch scoring into separate steps.
 ```

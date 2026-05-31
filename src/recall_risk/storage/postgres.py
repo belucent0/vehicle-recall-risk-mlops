@@ -62,6 +62,11 @@ def fetch_latest_risk_scores(
     query = sql.SQL(
         """
         SELECT
+            load_run_id,
+            source_run_id,
+            model_version,
+            scoring_method,
+            scored_at_utc,
             rank,
             make,
             model,
@@ -83,4 +88,3 @@ def fetch_latest_risk_scores(
         with conn.cursor() as cur:
             cur.execute(query, params)
             return [dict(row) for row in cur.fetchall()]
-

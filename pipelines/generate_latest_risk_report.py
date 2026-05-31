@@ -40,6 +40,8 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
         f"- Source run ID: `{summary['source_run_id']}`",
         f"- Built at UTC: `{summary['built_at_utc']}`",
         f"- Latest week: `{summary['latest_week']}`",
+        f"- Model version: `{summary['model_version']}`",
+        f"- Scoring method: `{summary['scoring_method']}`",
         f"- Input CSV: `{summary['input_csv']}`",
         "",
         "## What this score means",
@@ -107,11 +109,15 @@ def main() -> int:
     rows = rows[: args.top_k]
 
     latest_week = rows[0]["week_start"] if rows else ""
+    model_version = rows[0].get("model_version", "") if rows else ""
+    scoring_method = rows[0].get("scoring_method", "") if rows else ""
     summary = {
         "source_run_id": run_id,
         "built_at_utc": datetime.now(UTC).isoformat(),
         "input_csv": display_path(input_csv),
         "latest_week": latest_week,
+        "model_version": model_version,
+        "scoring_method": scoring_method,
         "top_k": args.top_k,
         "top_rows": rows,
     }
@@ -134,4 +140,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

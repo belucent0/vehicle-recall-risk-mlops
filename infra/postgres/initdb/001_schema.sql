@@ -108,6 +108,10 @@ CREATE TABLE IF NOT EXISTS recall_risk.training_dataset_labeled_only (
 );
 
 CREATE TABLE IF NOT EXISTS recall_risk.latest_risk_scores (
+    source_run_id TEXT,
+    model_version TEXT,
+    scoring_method TEXT,
+    scored_at_utc TEXT,
     rank TEXT,
     make TEXT,
     model TEXT,
@@ -126,6 +130,11 @@ CREATE TABLE IF NOT EXISTS recall_risk.latest_risk_scores (
 );
 
 CREATE TABLE IF NOT EXISTS recall_risk.baseline_test_predictions (
+    source_run_id TEXT,
+    model_version TEXT,
+    model_type TEXT,
+    model_library TEXT,
+    scored_at_utc TEXT,
     split TEXT,
     make TEXT,
     model TEXT,
@@ -146,6 +155,11 @@ CREATE TABLE IF NOT EXISTS recall_risk.baseline_test_predictions (
 );
 
 CREATE TABLE IF NOT EXISTS recall_risk.baseline_logistic_coefficients (
+    source_run_id TEXT,
+    model_version TEXT,
+    model_type TEXT,
+    model_library TEXT,
+    scored_at_utc TEXT,
     feature TEXT,
     coefficient TEXT
 );
@@ -206,16 +220,30 @@ ALTER TABLE recall_risk.training_dataset_labeled_only
     ADD COLUMN IF NOT EXISTS record_hash TEXT;
 
 ALTER TABLE recall_risk.latest_risk_scores
+    ADD COLUMN IF NOT EXISTS source_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS model_version TEXT,
+    ADD COLUMN IF NOT EXISTS scoring_method TEXT,
+    ADD COLUMN IF NOT EXISTS scored_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS load_run_id TEXT,
     ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS record_hash TEXT;
 
 ALTER TABLE recall_risk.baseline_test_predictions
+    ADD COLUMN IF NOT EXISTS source_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS model_version TEXT,
+    ADD COLUMN IF NOT EXISTS model_type TEXT,
+    ADD COLUMN IF NOT EXISTS model_library TEXT,
+    ADD COLUMN IF NOT EXISTS scored_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS load_run_id TEXT,
     ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS record_hash TEXT;
 
 ALTER TABLE recall_risk.baseline_logistic_coefficients
+    ADD COLUMN IF NOT EXISTS source_run_id TEXT,
+    ADD COLUMN IF NOT EXISTS model_version TEXT,
+    ADD COLUMN IF NOT EXISTS model_type TEXT,
+    ADD COLUMN IF NOT EXISTS model_library TEXT,
+    ADD COLUMN IF NOT EXISTS scored_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS load_run_id TEXT,
     ADD COLUMN IF NOT EXISTS loaded_at_utc TEXT,
     ADD COLUMN IF NOT EXISTS record_hash TEXT;
@@ -285,6 +313,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_recalls_record_hash
     ON recall_risk.recalls (record_hash)
     WHERE record_hash IS NOT NULL AND record_hash <> '';
 
+DROP VIEW IF EXISTS recall_risk.v_latest_risk_scores;
+
 CREATE OR REPLACE VIEW recall_risk.v_latest_risk_scores AS
 WITH latest_successful_load AS (
     SELECT load_run_id
@@ -295,6 +325,11 @@ WITH latest_successful_load AS (
     LIMIT 1
 )
 SELECT
+    load_run_id,
+    source_run_id,
+    model_version,
+    scoring_method,
+    NULLIF(scored_at_utc, '')::TIMESTAMPTZ AS scored_at_utc,
     NULLIF(rank, '')::INTEGER AS rank,
     make,
     model,
@@ -311,6 +346,8 @@ WHERE (
     AND load_run_id = (SELECT load_run_id FROM latest_successful_load)
 )
 OR NOT EXISTS (SELECT 1 FROM latest_successful_load);
+
+DROP VIEW IF EXISTS recall_risk.v_training_dataset;
 
 CREATE OR REPLACE VIEW recall_risk.v_training_dataset AS
 WITH latest_successful_load AS (

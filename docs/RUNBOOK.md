@@ -387,3 +387,41 @@ group by table_name
 order by table_name;
 "
 ```
+
+## 12. Model/scoring metadata
+
+Latest risk API now includes model lineage metadata:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing "http://localhost:28000/risk-scores/latest?limit=3"
+```
+
+Expected metadata fields:
+
+```text
+load_run_id
+source_run_id
+model_version
+scoring_method
+scored_at_utc
+```
+
+Inspect latest risk score metadata:
+
+```powershell
+docker compose exec postgres psql -U recall_user -d recall_risk -c "
+select load_run_id, source_run_id, model_version, scoring_method, count(*)
+from recall_risk.v_latest_risk_scores
+group by load_run_id, source_run_id, model_version, scoring_method;
+"
+```
+
+Inspect logistic baseline prediction metadata:
+
+```powershell
+docker compose exec postgres psql -U recall_user -d recall_risk -c "
+select load_run_id, source_run_id, model_version, model_type, model_library, count(*)
+from recall_risk.baseline_test_predictions
+group by load_run_id, source_run_id, model_version, model_type, model_library;
+"
+```

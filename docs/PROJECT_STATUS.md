@@ -256,7 +256,30 @@ Current limitation:
 ```text
 Feature generation still uses CSV artifacts.
 Derived tables are appended by run_id.
-Prediction/model_version metadata is pending.
+Training and scoring are still coupled in one baseline script.
+```
+
+## Model version metadata verification
+
+```text
+latest_risk_scores model_version: rule_baseline_v1
+latest_risk_scores scoring_method: complaint_spike_rule
+baseline_test_predictions model_version: sklearn_logistic_v1
+baseline_test_predictions model_library: scikit-learn
+API metadata fields: verified
+```
+
+Details:
+
+```text
+docs/MODEL_VERSION_METADATA_RESULTS.md
+```
+
+Updated limitation:
+
+```text
+Training and test scoring are still coupled in train_baseline_backfill.py.
+Dedicated batch scoring DAG/task is pending.
 ```
 
 Details:
