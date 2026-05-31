@@ -7,9 +7,9 @@ Written: 2026-05-26 KST
 This document records the first verified scheduled data-collection DAG for the
 Vehicle Recall Risk MLOps project.
 
-The DAG is intentionally separated from the model-processing DAG. Its job is to
-collect live NHTSA raw JSON snapshots for a small, controlled list of
-vehicle-year targets and leave a manifest that downstream jobs can consume.
+The DAG collects live NHTSA raw JSON snapshots for a small, controlled list of
+vehicle-year targets, leaves a manifest, and now triggers the downstream
+model-processing DAG with the generated `run_id`.
 
 ## Implemented files
 
@@ -109,16 +109,16 @@ scheduled snapshot collector for selected vehicle-year targets.
 ```text
 1. The collector re-fetches selected vehicle-year snapshots.
 2. There is no record-level deduplication/state table yet.
-3. The processing DAG does not automatically consume the newest collection run_id yet.
+3. The processing DAG now consumes the generated collection run_id via DAG conf.
 4. CI only checks DAG syntax. It does not call live NHTSA APIs.
 ```
 
 ## Next step
 
-Connect the collection DAG to the processing DAG:
+Move from snapshot reload to incremental DB ingestion:
 
 ```text
-1. Let nhtsa_recall_risk_mvp accept dag_run.conf["run_id"].
-2. Trigger nhtsa_recall_risk_mvp after nhtsa_collect_incremental succeeds.
-3. Later, add a Postgres ingestion state table for true incremental/dedup logic.
+1. Add Postgres ingestion state and raw record index tables.
+2. Stop truncating serving tables on each processing run.
+3. Store prediction rows with run_id and model_version.
 ```

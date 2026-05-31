@@ -13,6 +13,11 @@ try:
 except ImportError:  # Airflow 3.x compatibility.
     from airflow.providers.standard.operators.bash import BashOperator  # type: ignore
 
+try:
+    from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+except ImportError:  # Airflow 3.x compatibility.
+    from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator  # type: ignore
+
 
 PROJECT_ROOT = os.getenv("PROJECT_ROOT", "/opt/airflow/project")
 VEHICLE_MODELS_CSV = os.getenv(
@@ -22,8 +27,10 @@ VEHICLE_MODELS_CSV = os.getenv(
 COLLECT_LIMIT = os.getenv("NHTSA_COLLECT_LIMIT", "5")
 SLEEP_SECONDS = os.getenv("NHTSA_COLLECT_SLEEP_SECONDS", "0.2")
 COLLECT_SCHEDULE = os.getenv("NHTSA_COLLECT_SCHEDULE", "@daily")
+DEFAULT_DATA_AS_OF_DATE = os.getenv("NHTSA_DATA_AS_OF_DATE", "2026-05-15")
 
 RUN_ID_TEMPLATE = "{{ dag_run.conf.get('run_id', 'collect_' ~ ts_nodash) }}"
+DATA_AS_OF_DATE_TEMPLATE = "{{ dag_run.conf.get('data_as_of_date', params.data_as_of_date) }}"
 
 
 def project_command(command: str) -> str:
@@ -46,6 +53,9 @@ with DAG(
     start_date=datetime(2026, 5, 1),
     schedule=COLLECT_SCHEDULE,
     catchup=False,
+    params={
+        "data_as_of_date": DEFAULT_DATA_AS_OF_DATE,
+    },
     tags=["nhtsa", "recall-risk", "collection", "snapshot"],
 ) as dag:
     check_collection_inputs = BashOperator(
@@ -88,4 +98,17 @@ with DAG(
         do_xcom_push=False,
     )
 
-    check_collection_inputs >> collect_nhtsa_snapshot >> validate_manifest
+    trigger_processing_dag = TriggerDagRunOperator(
+        task_id="trigger_recall_risk_mvp",
+        trigger_dag_id="nhtsa_recall_risk_mvp",
+        trigger_run_id=f"process_{RUN_ID_TEMPLATE}",
+        conf={
+            "run_id": RUN_ID_TEMPLATE,
+            "data_as_of_date": DATA_AS_OF_DATE_TEMPLATE,
+            "triggered_by": "nhtsa_collect_incremental",
+            "source_dag_run_id": "{{ dag_run.run_id }}",
+        },
+        wait_for_completion=False,
+    )
+
+    check_collection_inputs >> collect_nhtsa_snapshot >> validate_manifest >> trigger_processing_dag

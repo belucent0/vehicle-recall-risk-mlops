@@ -324,6 +324,23 @@ Notes:
 
 ```text
 1. This is a scheduled snapshot collector, not a deduplicated incremental loader yet.
-2. JSON conf can override run_id/limit/sleep_seconds, but quoting differs by shell.
-3. CI checks DAG syntax only; it does not call live NHTSA APIs.
+2. The collection DAG now triggers nhtsa_recall_risk_mvp after manifest validation.
+3. JSON conf can override run_id/limit/sleep_seconds, but quoting differs by shell.
+4. CI checks DAG syntax only; it does not call live NHTSA APIs.
+5. The downstream load_postgres step still truncates serving tables.
+```
+
+Restore full MVP serving data after a small collection handoff run:
+
+```powershell
+python pipelines/load_postgres.py --run-id 20260515T114046Z --apply-schema --truncate
+```
+
+Verified handoff example:
+
+```text
+collection dag_run_id: manual__handoff_20260531T170000
+generated run_id: collect_20260531T080049
+processing dag_run_id: process_collect_20260531T080049
+processing state: success
 ```

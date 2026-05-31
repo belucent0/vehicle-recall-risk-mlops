@@ -169,3 +169,31 @@ Next:
 ```text
 Make the processing DAG consume a collected run_id and trigger it after collection succeeds.
 ```
+
+## R5. Collection-to-processing DAG handoff
+
+Status: done
+
+Implemented and verified Airflow DAG-to-DAG handoff.
+
+```text
+nhtsa_collect_incremental
+  -> trigger_recall_risk_mvp
+  -> nhtsa_recall_risk_mvp with dag_run.conf["run_id"]
+```
+
+Verified run:
+
+```text
+collection dag_run_id: manual__handoff_20260531T170000
+generated run_id: collect_20260531T080049
+processing dag_run_id: process_collect_20260531T080049
+processing state: success
+```
+
+Remaining caveat:
+
+```text
+load_postgres still truncates serving tables.
+True incremental DB ingestion is pending.
+```

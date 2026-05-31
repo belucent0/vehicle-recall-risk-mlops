@@ -15,8 +15,13 @@ except ImportError:  # Airflow 3.x compatibility.
 
 
 PROJECT_ROOT = os.getenv("PROJECT_ROOT", "/opt/airflow/project")
-RUN_ID = os.getenv("NHTSA_RUN_ID", "20260515T114046Z")
-DATA_AS_OF_DATE = os.getenv("NHTSA_DATA_AS_OF_DATE", "2026-05-15")
+DEFAULT_RUN_ID = os.getenv("NHTSA_RUN_ID", "20260515T114046Z")
+DEFAULT_DATA_AS_OF_DATE = os.getenv("NHTSA_DATA_AS_OF_DATE", "2026-05-15")
+
+RUN_ID_TEMPLATE = "{{ dag_run.conf.get('run_id', params.default_run_id) }}"
+DATA_AS_OF_DATE_TEMPLATE = (
+    "{{ dag_run.conf.get('data_as_of_date', params.default_data_as_of_date) }}"
+)
 
 
 def project_command(command: str) -> str:
@@ -36,6 +41,10 @@ with DAG(
     start_date=datetime(2026, 5, 1),
     schedule=None,
     catchup=False,
+    params={
+        "default_run_id": DEFAULT_RUN_ID,
+        "default_data_as_of_date": DEFAULT_DATA_AS_OF_DATE,
+    },
     tags=["nhtsa", "recall-risk", "mvp", "mlops"],
 ) as dag:
     check_project = BashOperator(
@@ -45,7 +54,10 @@ with DAG(
             "&& test -f pipelines/build_features_labels_backfill.py "
             "&& test -f pipelines/train_baseline_backfill.py "
             "&& test -f pipelines/load_postgres.py "
-            "&& test -f pipelines/log_baseline_mlflow.py"
+            "&& test -f pipelines/log_baseline_mlflow.py "
+            f'&& test -s "data/raw/backfill/{RUN_ID_TEMPLATE}/manifest.csv" '
+            f'&& echo "processing_run_id={RUN_ID_TEMPLATE}" '
+            f'&& echo "data_as_of_date={DATA_AS_OF_DATE_TEMPLATE}"'
         ),
         do_xcom_push=False,
     )
@@ -53,7 +65,7 @@ with DAG(
     normalize_backfill = BashOperator(
         task_id="normalize_backfill",
         bash_command=project_command(
-            f"python pipelines/normalize_backfill.py --run-id {RUN_ID}"
+            f'python pipelines/normalize_backfill.py --run-id "{RUN_ID_TEMPLATE}"'
         ),
         do_xcom_push=False,
     )
@@ -62,8 +74,8 @@ with DAG(
         task_id="build_features_labels",
         bash_command=project_command(
             "python pipelines/build_features_labels_backfill.py "
-            f"--run-id {RUN_ID} "
-            f"--data-as-of-date {DATA_AS_OF_DATE}"
+            f'--run-id "{RUN_ID_TEMPLATE}" '
+            f'--data-as-of-date "{DATA_AS_OF_DATE_TEMPLATE}"'
         ),
         do_xcom_push=False,
     )
@@ -72,7 +84,7 @@ with DAG(
         task_id="train_baseline",
         bash_command=project_command(
             "python pipelines/train_baseline_backfill.py "
-            f"--run-id {RUN_ID} "
+            f'--run-id "{RUN_ID_TEMPLATE}" '
             "--epochs 120 "
             "--negative-ratio 20 "
             "--max-train-rows 100000"
@@ -83,7 +95,7 @@ with DAG(
     generate_latest_risk_report = BashOperator(
         task_id="generate_latest_risk_report",
         bash_command=project_command(
-            f"python pipelines/generate_latest_risk_report.py --run-id {RUN_ID} --top-k 25"
+            f'python pipelines/generate_latest_risk_report.py --run-id "{RUN_ID_TEMPLATE}" --top-k 25'
         ),
         do_xcom_push=False,
     )
@@ -91,7 +103,7 @@ with DAG(
     load_postgres = BashOperator(
         task_id="load_postgres",
         bash_command=project_command(
-            f"python pipelines/load_postgres.py --run-id {RUN_ID} --apply-schema --truncate"
+            f'python pipelines/load_postgres.py --run-id "{RUN_ID_TEMPLATE}" --apply-schema --truncate'
         ),
         do_xcom_push=False,
     )
@@ -99,7 +111,7 @@ with DAG(
     log_mlflow = BashOperator(
         task_id="log_mlflow",
         bash_command=project_command(
-            f"python pipelines/log_baseline_mlflow.py --run-id {RUN_ID}"
+            f'python pipelines/log_baseline_mlflow.py --run-id "{RUN_ID_TEMPLATE}"'
         ),
         do_xcom_push=False,
     )

@@ -10,8 +10,8 @@
 
 ```text
 1. nhtsa_collect_incremental DAG는 live NHTSA API를 호출해서 raw snapshot을 만든다.
-2. nhtsa_recall_risk_mvp DAG는 특정 NHTSA_RUN_ID를 기준으로 정규화/feature/학습/적재를 수행한다.
-3. 두 DAG 사이의 자동 handoff는 아직 없다.
+2. nhtsa_recall_risk_mvp DAG는 dag_run.conf["run_id"]를 기준으로 정규화/feature/학습/적재를 수행한다.
+3. 두 DAG 사이의 자동 handoff는 TriggerDagRunOperator로 구현됐다.
 4. PostgreSQL은 serving용 결과 저장소 역할을 한다.
 5. MLflow는 현재 SQLite tracking URI 기반으로 baseline run을 기록한다.
 ```
@@ -33,7 +33,7 @@ flowchart LR
             c1 --> c2 --> c3
         end
 
-        subgraph mvp_dag["DAG: nhtsa_recall_risk_mvp<br/>schedule: manual"]
+        subgraph mvp_dag["DAG: nhtsa_recall_risk_mvp<br/>schedule: triggered/manual"]
             m1["check_project_files"]
             m2["normalize_backfill.py"]
             m3["build_features_labels_backfill.py"]
@@ -96,7 +96,8 @@ flowchart LR
 
     tests --> dag_parse --> sample_e2e --> docker_build --> api_smoke
 
-    c3 -. "현재 자동 연결 없음<br/>run_id handoff pending" .-> m1
+    c3 --> trigger["trigger_recall_risk_mvp<br/>conf.run_id"]
+    trigger --> m1
 
     classDef done fill:#e7f5ff,stroke:#1c7ed6,color:#102a43;
     classDef gap fill:#fff3bf,stroke:#f08c00,color:#3b2f00;
@@ -132,21 +133,22 @@ flowchart TB
         p0 --> p1 --> p2 --> p3 --> p4 --> p5 --> p6
     end
 
-    c -. "pending:<br/>TriggerDagRunOperator or Dataset scheduling" .-> p0
+    c --> t["trigger_recall_risk_mvp<br/>TriggerDagRunOperator"]
+    t --> p0
 ```
 
-현재 문제는 `nhtsa_recall_risk_mvp`가 환경변수 `NHTSA_RUN_ID`에 고정된 run을 처리한다는 점이다.
+현재 `nhtsa_recall_risk_mvp`는 `dag_run.conf["run_id"]`를 우선 사용하고, 값이 없으면 환경변수 `NHTSA_RUN_ID`를 fallback으로 사용한다.
 
 ```text
 현재 기본값: 20260515T114046Z
 수집 DAG 최신 산출물 예시: collect_20260525T171005
 ```
 
-따라서 다음 개선의 첫 번째 핵심은 **수집 DAG가 만든 run_id를 처리 DAG에 전달**하는 것이다.
+따라서 DAG 간 run_id 전달은 완료됐다. 다음 핵심은 truncate 없는 incremental ingestion이다.
 
-## 3. 앞으로 바뀌어야 하는 아키텍처: 1차 목표
+## 3. 구현된 1차 handoff 아키텍처
 
-가장 가까운 목표는 **DAG 간 handoff**다.
+1차 목표였던 **DAG 간 handoff**는 구현됐다.
 
 ```mermaid
 flowchart LR
@@ -169,7 +171,7 @@ flowchart LR
     class handoff,process next;
 ```
 
-필요 변경:
+완료된 변경:
 
 ```text
 1. nhtsa_recall_risk_mvp가 dag_run.conf["run_id"]를 받도록 수정
@@ -287,8 +289,8 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    s0["현재<br/>수집 DAG와 처리 DAG 분리<br/>manual handoff"]
-    s1["Step 1<br/>run_id conf 전달<br/>collection -> processing trigger"]
+    s0["현재<br/>수집 DAG와 처리 DAG 연결<br/>automatic handoff"]
+    s1["Step 1 done<br/>run_id conf 전달<br/>collection -> processing trigger"]
     s2["Step 2<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
     s3["Step 3<br/>training/scoring 분리<br/>model_version 기록"]
     s4["Step 4<br/>MLflow registry + promotion gate"]
@@ -301,8 +303,8 @@ flowchart LR
 
 | Priority | Change | Why |
 |---:|---|---|
-| 1 | `dag_run.conf["run_id"]` 기반 처리 DAG 실행 | 수집과 처리 사이의 실제 자동화 연결 |
-| 2 | `TriggerDagRunOperator` 또는 Airflow Dataset 적용 | daily collection 이후 자동 후속 처리 |
+| 1 | `dag_run.conf["run_id"]` 기반 처리 DAG 실행 | done |
+| 2 | `TriggerDagRunOperator` 적용 | done |
 | 3 | ingestion state/dedupe table 추가 | snapshot 반복 수집에서 true incremental ingestion으로 전환 |
 | 4 | prediction/model_version metadata 추가 | 포트폴리오에서 MLOps maturity를 설명 가능 |
 | 5 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
@@ -313,13 +315,13 @@ flowchart LR
 
 ```text
 Airflow + PostgreSQL + FastAPI + MLflow + CI는 붙었다.
-하지만 collection과 processing은 아직 자동 연결되지 않았다.
-그리고 incremental ingestion은 아직 snapshot collector 수준이다.
+collection과 processing도 자동 연결됐다.
+하지만 incremental ingestion은 아직 snapshot collector + truncate reload 수준이다.
 ```
 
 다음 구현은 다음 하나가 맞다.
 
 ```text
-nhtsa_recall_risk_mvp를 dag_run.conf["run_id"] 기반으로 바꾸고,
-nhtsa_collect_incremental이 성공하면 그 run_id로 처리 DAG를 trigger하게 만든다.
+PostgreSQL ingestion_state/raw_record_index를 추가하고,
+load_postgres --truncate 의존을 제거한다.
 ```

@@ -6,11 +6,19 @@ This document visualizes the current and target architecture using plain ASCII
 diagrams. It is meant to be readable in terminals, GitHub markdown, and code
 review screens without Mermaid rendering.
 
+Status note:
+
+```text
+As of 2026-05-31, collection-to-processing DAG handoff is implemented.
+The remaining major gap is true incremental DB ingestion without truncating
+serving tables.
+```
+
 ## 1. Current architecture
 
 The current project already has Airflow, PostgreSQL, FastAPI, MLflow, Docker,
-and CI. The important gap is that the collection DAG and the processing DAG are
-not automatically connected yet.
+and CI. The collection DAG now triggers the processing DAG with the generated
+run_id.
 
 ```text
                           +----------------------+
@@ -42,13 +50,13 @@ not automatically connected yet.
 |   | - manifest.csv                   |                                   |
 |   +----------------+-----------------+                                   |
 |                    |                                                     |
-|                    |  CURRENT GAP: manual run_id handoff                 |
-|                    |  No automatic DAG-to-DAG trigger yet                |
+|                    |  TriggerDagRunOperator                              |
+|                    |  conf.run_id = generated collection run_id          |
 |                    v                                                     |
 |   +----------------------------------+                                   |
 |   | DAG: nhtsa_recall_risk_mvp       |                                   |
-|   | schedule: manual                 |                                   |
-|   | current run_id source: env var   |                                   |
+|   | schedule: triggered/manual       |                                   |
+|   | run_id source: dag_run.conf      |                                   |
 |   |                                  |                                   |
 |   |  check_project_files             |                                   |
 |   |          |                       |                                   |
@@ -179,9 +187,10 @@ not automatically connected yet.
   +-------------------+
 ```
 
-## 3. Near-term target architecture
+## 3. Near-term handoff architecture
 
-The next implementation should connect the collection DAG to the processing DAG.
+This handoff has been implemented. The next implementation should remove the
+destructive truncate-based serving load and introduce ingestion state/dedup.
 
 ```text
                           +----------------------+
@@ -233,13 +242,13 @@ The next implementation should connect the collection DAG to the processing DAG.
               +----------------------------------+
 ```
 
-Required code changes:
+Completed code changes:
 
 ```text
-1. Change nhtsa_recall_risk_mvp to read dag_run.conf["run_id"].
-2. Keep env var fallback for local/manual runs.
-3. Add final trigger task to nhtsa_collect_incremental.
-4. Ensure the downstream run_id appears in logs, reports, and PostgreSQL metadata.
+1. nhtsa_recall_risk_mvp reads dag_run.conf["run_id"].
+2. Env var fallback remains for local/manual runs.
+3. nhtsa_collect_incremental has final trigger_recall_risk_mvp task.
+4. Verified processing run: process_collect_20260531T080049.
 ```
 
 ## 4. Target MLOps architecture
@@ -357,7 +366,7 @@ stateful, incremental, DB-backed MLOps architecture.
 |                    |
 | collection DAG     |
 | processing DAG     |
-| manual handoff     |
+| automatic handoff  |
 +---------+----------+
           |
           v
@@ -415,7 +424,7 @@ Airflow collection DAG
    v
 raw JSON + manifest
    |
-   |  manual / not automated yet
+   |  automatic trigger with conf.run_id
    v
 Airflow processing DAG
    |
@@ -432,19 +441,8 @@ FastAPI
 NEXT
 ====
 
-NHTSA API
-   |
-   v
-collection DAG
-   |
-   v
-generated run_id
-   |
-   v
-trigger processing DAG with conf.run_id
-   |
-   v
-PostgreSQL + MLflow + FastAPI
+Replace truncate-based PostgreSQL load with
+incremental ingestion state and dedupe tables.
 
 
 TARGET

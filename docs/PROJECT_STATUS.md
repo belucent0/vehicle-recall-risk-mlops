@@ -207,3 +207,29 @@ Data processing/model orchestration: verified
 Automatic handoff from collection DAG to processing DAG: pending
 Record-level incremental deduplication: pending
 ```
+
+## DAG handoff verification
+
+```text
+collection DAG: nhtsa_collect_incremental
+collection run: manual__handoff_20260531T170000
+generated data run_id: collect_20260531T080049
+processing DAG: nhtsa_recall_risk_mvp
+processing run: process_collect_20260531T080049
+state: success
+```
+
+Details:
+
+```text
+docs/DAG_HANDOFF_RESULTS.md
+```
+
+Updated status:
+
+```text
+Collection orchestration: done
+Processing/model orchestration: done
+DAG-to-DAG run_id handoff: done
+Incremental DB ingestion without truncate: pending
+```
