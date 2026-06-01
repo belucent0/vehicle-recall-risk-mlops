@@ -17,6 +17,7 @@ Airflow DAG scaffold: done
 Airflow E2E run: done
 scikit-learn baseline: done
 Training/scoring split: done
+Model promotion gate: done
 Model-based latest scoring API: done
 Docker API: done
 GitHub Actions CI: green
@@ -36,6 +37,7 @@ docs/DAG_HANDOFF_RESULTS.md
 docs/INCREMENTAL_INGESTION_RESULTS.md
 docs/MODEL_VERSION_METADATA_RESULTS.md
 docs/TRAIN_SCORE_SPLIT_RESULTS.md
+docs/MODEL_PROMOTION_GATE_RESULTS.md
 docs/MODEL_LATEST_RISK_SCORE_RESULTS.md
 docs/PORTFOLIO_BRIEF.md
 docs/RUNBOOK.md

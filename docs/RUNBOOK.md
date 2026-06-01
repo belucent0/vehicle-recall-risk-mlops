@@ -211,6 +211,7 @@ normalize_backfill
 build_features_labels
 train_model
 score_batch
+evaluate_model_gate
 score_latest
 generate_latest_risk_report
 load_postgres
@@ -457,6 +458,9 @@ score_batch_backfill.py
   -> baseline_test_predictions.csv
   -> baseline_model_summary.json
 
+evaluate_model_gate.py
+  -> model_promotion_decision.json
+
 score_latest_backfill.py
   -> model_latest_risk_scores.csv
   -> model_latest_risk_summary.json
@@ -470,6 +474,7 @@ normalize_backfill
 build_features_labels
 train_model
 score_batch
+evaluate_model_gate
 score_latest
 generate_latest_risk_report
 load_postgres
@@ -484,7 +489,38 @@ python pipelines/train_baseline_backfill.py ...
 
 still works, but it is now only a wrapper around the two split scripts.
 
-## 14. Model-based latest risk scores
+## 14. Model promotion gate
+
+Run promotion gate:
+
+```powershell
+python pipelines/evaluate_model_gate.py --run-id 20260515T114046Z --min-test-positives 10 --min-ap-delta 0 --max-brier-regression 0 --precision-k 25
+```
+
+Expected decision file:
+
+```text
+data/processed/backfill/20260515T114046Z/model_promotion_decision.json
+```
+
+Current expected decision:
+
+```text
+promotion_status: approved
+average_precision_delta: 0.00191
+brier_score_delta: -0.003691
+warning: logistic precision@25 below rule precision@25
+```
+
+Strict top-K gate, for later use after ranking improves:
+
+```powershell
+python pipelines/evaluate_model_gate.py --run-id 20260515T114046Z --require-precision-at-k
+```
+
+`score_latest_backfill.py` now requires an approved promotion decision by default.
+
+## 15. Model-based latest risk scores
 
 Run model-based latest scoring:
 

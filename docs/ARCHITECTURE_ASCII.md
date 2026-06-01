@@ -13,6 +13,7 @@ As of 2026-05-31, collection-to-processing DAG handoff is implemented.
 First-pass PostgreSQL ingestion_state/raw_record_index support is implemented.
 Model/scoring version metadata is implemented in prediction and serving outputs.
 Training and batch scoring are now separate pipeline scripts and Airflow tasks.
+Model promotion gate is implemented before latest-week model score publishing.
 The trained model now also produces latest-week serving scores.
 The remaining major gap is connecting scoring to an MLflow model alias and
 moving feature generation toward DB-backed bronze/silver tables.
@@ -77,6 +78,9 @@ run_id.
 |   |  score_batch                     |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
+|   |  evaluate_model_gate             |                                   |
+|   |          |                       |                                   |
+|   |          v                       |                                   |
 |   |  score_latest                    |                                   |
 |   |          |                       |                                   |
 |   |          v                       |                                   |
@@ -103,6 +107,7 @@ run_id.
 |    - training_dataset.csv                                                |
 |    - latest_risk_scores.csv                                              |
 |    - baseline_test_predictions.csv                                       |
+|    - model_promotion_decision.json                                       |
 |    - model_latest_risk_scores.csv                                        |
 |    - baseline_training_summary.json                                      |
 |    - sklearn_logistic_pipeline.joblib                                    |
@@ -415,13 +420,21 @@ stateful, incremental, DB-backed MLOps architecture.
 +--------------------+
 | Step 4 done        |
 |                    |
+| model promotion    |
+| gate               |
++---------+----------+
+          |
+          v
++--------------------+
+| Step 5 done        |
+|                    |
 | model latest       |
 | serving scores     |
 +---------+----------+
           |
           v
 +--------------------+
-| Step 5             |
+| Step 6             |
 |                    |
 | MLflow registry    |
 | promotion gate     |
@@ -429,7 +442,7 @@ stateful, incremental, DB-backed MLOps architecture.
           |
           v
 +--------------------+
-| Step 6             |
+| Step 7             |
 |                    |
 | monitoring         |
 | dashboard / alerts |
@@ -458,6 +471,7 @@ Airflow processing DAG
    +--> feature/label build
    +--> train_model
    +--> score_batch        # held-out test evaluation
+   +--> evaluate_model_gate
    +--> score_latest       # latest-week model serving score
    +--> load_postgres
    +--> log_mlflow
@@ -476,8 +490,8 @@ NEXT
 ====
 
 Connect scoring to an MLflow model artifact/alias,
-then move features toward DB-backed bronze/silver
-tables.
+then tighten promotion criteria and move features
+toward DB-backed bronze/silver tables.
 
 
 TARGET

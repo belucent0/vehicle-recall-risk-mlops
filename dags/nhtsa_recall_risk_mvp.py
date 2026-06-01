@@ -54,6 +54,7 @@ with DAG(
             "&& test -f pipelines/build_features_labels_backfill.py "
             "&& test -f pipelines/train_model_backfill.py "
             "&& test -f pipelines/score_batch_backfill.py "
+            "&& test -f pipelines/evaluate_model_gate.py "
             "&& test -f pipelines/score_latest_backfill.py "
             "&& test -f pipelines/load_postgres.py "
             "&& test -f pipelines/log_baseline_mlflow.py "
@@ -102,6 +103,19 @@ with DAG(
         do_xcom_push=False,
     )
 
+    evaluate_model_gate = BashOperator(
+        task_id="evaluate_model_gate",
+        bash_command=project_command(
+            "python pipelines/evaluate_model_gate.py "
+            f'--run-id "{RUN_ID_TEMPLATE}" '
+            "--min-test-positives 10 "
+            "--min-ap-delta 0 "
+            "--max-brier-regression 0 "
+            "--precision-k 25"
+        ),
+        do_xcom_push=False,
+    )
+
     score_latest = BashOperator(
         task_id="score_latest",
         bash_command=project_command(
@@ -140,6 +154,7 @@ with DAG(
         >> build_features_labels
         >> train_model
         >> score_batch
+        >> evaluate_model_gate
         >> score_latest
         >> generate_latest_risk_report
         >> load_postgres

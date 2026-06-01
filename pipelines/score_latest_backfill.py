@@ -119,6 +119,7 @@ def write_markdown_report(summary: dict[str, Any], report_path: Path) -> None:
         f"- Model version: `{summary['model_version']}`",
         f"- Model type: `{summary['model_type']}`",
         f"- Scoring method: `{summary['scoring_method']}`",
+        f"- Promotion decision: `{summary.get('promotion_decision_json', '')}`",
         f"- Model artifact: `{summary['model_artifact']}`",
         f"- Input CSV: `{summary['input_csv']}`",
         f"- Output CSV: `{summary['output_csv']}`",
@@ -162,6 +163,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Score latest-week backfill rows with a trained model.")
     parser.add_argument("--run-id", help="Backfill run id. Defaults to latest processed backfill run.")
     parser.add_argument("--top-k", type=int, default=25)
+    parser.add_argument(
+        "--skip-promotion-gate",
+        action="store_true",
+        help="Allow latest scoring without an approved model_promotion_decision.json.",
+    )
     return parser.parse_args()
 
 
@@ -174,6 +180,7 @@ def main() -> int:
     run_id = processed_run_dir.name
     weekly_features_path = processed_run_dir / "weekly_features.csv"
     training_summary_path = processed_run_dir / "baseline_training_summary.json"
+    promotion_decision_path = processed_run_dir / "model_promotion_decision.json"
     output_path = processed_run_dir / "model_latest_risk_scores.csv"
     summary_path = processed_run_dir / "model_latest_risk_summary.json"
 
@@ -182,6 +189,19 @@ def main() -> int:
             f"{display_path(training_summary_path)} is missing. "
             "Run pipelines/train_model_backfill.py first."
         )
+
+    if not args.skip_promotion_gate:
+        if not promotion_decision_path.exists():
+            raise FileNotFoundError(
+                f"{display_path(promotion_decision_path)} is missing. "
+                "Run pipelines/evaluate_model_gate.py first or pass --skip-promotion-gate."
+            )
+        promotion_decision = read_json(promotion_decision_path)
+        if promotion_decision.get("promotion_status") != "approved":
+            raise RuntimeError(
+                "Model promotion gate did not approve latest scoring: "
+                f"{promotion_decision.get('promotion_status')}"
+            )
 
     training_summary = read_json(training_summary_path)
     model_artifact_path = resolve_project_path(training_summary.get("model_artifact"))
@@ -216,6 +236,9 @@ def main() -> int:
         "input_csv": display_path(weekly_features_path),
         "output_csv": display_path(output_path),
         "training_summary_json": display_path(training_summary_path),
+        "promotion_decision_json": display_path(promotion_decision_path)
+        if promotion_decision_path.exists()
+        else "",
         "model_artifact": display_path(model_artifact_path),
         "model_version": model_version,
         "model_type": risk_rows[0]["model_type"] if risk_rows else training_summary.get("model_type", ""),

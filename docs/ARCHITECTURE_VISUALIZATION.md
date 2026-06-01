@@ -39,11 +39,12 @@ flowchart LR
             m3["build_features_labels_backfill.py"]
             m4["train_model_backfill.py<br/>scikit-learn"]
             m5["score_batch_backfill.py"]
-            m6["score_latest_backfill.py"]
-            m7["generate_latest_risk_report.py"]
-            m8["load_postgres.py"]
-            m9["log_baseline_mlflow.py"]
-            m1 --> m2 --> m3 --> m4 --> m5 --> m6 --> m7 --> m8 --> m9
+            m6["evaluate_model_gate.py"]
+            m7["score_latest_backfill.py"]
+            m8["generate_latest_risk_report.py"]
+            m9["load_postgres.py"]
+            m10["log_baseline_mlflow.py"]
+            m1 --> m2 --> m3 --> m4 --> m5 --> m6 --> m7 --> m8 --> m9 --> m10
         end
     end
 
@@ -92,9 +93,10 @@ flowchart LR
     m4 --> model_file
     m5 --> processed
     m6 --> processed
-    m7 --> reports
-    m8 --> db
-    m9 --> mlflow_file
+    m7 --> processed
+    m8 --> reports
+    m9 --> db
+    m10 --> mlflow_file
 
     db --> view
     view --> api
@@ -112,7 +114,7 @@ flowchart LR
     classDef store fill:#ebfbee,stroke:#2b8a3e,color:#102a43;
     classDef serve fill:#f3f0ff,stroke:#7048e8,color:#102a43;
 
-    class c1,c2,c3,m1,m2,m3,m4,m5,m6,m7,m8,m9,tests,dag_parse,sample_e2e,docker_build,api_smoke done;
+    class c1,c2,c3,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,tests,dag_parse,sample_e2e,docker_build,api_smoke done;
     class raw,interim,processed,reports,model_file,mlflow_file,t1,t2,t3,t4,t5,t6,view,model_view store;
     class api,client serve;
 ```
@@ -136,11 +138,12 @@ flowchart TB
         p2["build_features_labels"]
         p3["train_model"]
         p4["score_batch"]
-        p5["score_latest"]
-        p6["generate_latest_risk_report"]
-        p7["load_postgres"]
-        p8["log_mlflow"]
-        p0 --> p1 --> p2 --> p3 --> p4 --> p5 --> p6 --> p7 --> p8
+        p5["evaluate_model_gate"]
+        p6["score_latest"]
+        p7["generate_latest_risk_report"]
+        p8["load_postgres"]
+        p9["log_mlflow"]
+        p0 --> p1 --> p2 --> p3 --> p4 --> p5 --> p6 --> p7 --> p8 --> p9
     end
 
     c --> t["trigger_recall_risk_mvp<br/>TriggerDagRunOperator"]
@@ -173,7 +176,8 @@ flowchart LR
     normalize --> features["features + labels"]
     features --> train["train_model"]
     train --> score["score_batch"]
-    score --> latest_score["score_latest"]
+    score --> gate["evaluate_model_gate"]
+    gate --> latest_score["score_latest"]
     latest_score --> load["load_postgres"]
     latest_score --> mlflow["log_mlflow"]
     load --> postgres["PostgreSQL serving tables"]
@@ -305,11 +309,12 @@ flowchart LR
     s1["Step 1 done<br/>run_id conf 전달<br/>collection -> processing trigger"]
     s2["Step 2 done<br/>PostgreSQL ingestion_state<br/>record-level dedupe"]
     s3["Step 3 done<br/>model_version metadata<br/>training/scoring split"]
-    s4["Step 4 done<br/>model latest scoring<br/>serving endpoint"]
-    s5["Step 5<br/>MLflow registry + promotion gate"]
-    s6["Step 6<br/>monitoring / dashboard / alerts"]
+    s4["Step 4 done<br/>model promotion gate"]
+    s5["Step 5 done<br/>model latest scoring<br/>serving endpoint"]
+    s6["Step 6<br/>MLflow registry / alias"]
+    s7["Step 7<br/>monitoring / dashboard / alerts"]
 
-    s0 --> s1 --> s2 --> s3 --> s4 --> s5 --> s6
+    s0 --> s1 --> s2 --> s3 --> s4 --> s5 --> s6 --> s7
 ```
 
 우선순위:
@@ -321,8 +326,9 @@ flowchart LR
 | 3 | ingestion state/dedupe table 추가 | snapshot 반복 수집에서 true incremental ingestion으로 전환 |
 | 4 | prediction/model_version metadata 추가 | done |
 | 5 | training/scoring split | done |
-| 6 | model latest scoring API | done |
-| 7 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
+| 6 | model promotion gate | done |
+| 7 | model latest scoring API | done |
+| 8 | monitoring 최소 지표 추가 | 운영형 프로젝트로 확장 |
 
 ## 6. 한 줄 판단
 
@@ -337,6 +343,6 @@ incremental ingestion은 1차 구현됐지만, feature generation은 아직 CSV 
 다음 구현은 다음 하나가 맞다.
 
 ```text
-training/test scoring/model latest serving path는 완료.
+training/test scoring/promotion gate/model latest serving path는 완료.
 다음은 MLflow model artifact URI/alias를 scoring input에 연결한다.
 ```

@@ -314,6 +314,40 @@ Details:
 docs/TRAIN_SCORE_SPLIT_RESULTS.md
 ```
 
+## Model promotion gate verification
+
+```text
+evaluate_model_gate.py: done
+model_promotion_decision.json: done
+nhtsa_recall_risk_mvp evaluate_model_gate task: done
+score_latest requires approved promotion decision: done
+```
+
+Verified decision:
+
+```text
+source_run_id: 20260515T114046Z
+promotion_status: approved
+average_precision_delta: 0.00191
+brier_score_delta: -0.003691
+warning: logistic precision@25 below rule precision@25
+```
+
+Verified Airflow run:
+
+```text
+dag_id: nhtsa_recall_risk_mvp
+run_id: manual__model_gate_20260601T230000
+state: success
+task order: score_batch -> evaluate_model_gate -> score_latest
+```
+
+Details:
+
+```text
+docs/MODEL_PROMOTION_GATE_RESULTS.md
+```
+
 ## Model-based latest scoring verification
 
 ```text

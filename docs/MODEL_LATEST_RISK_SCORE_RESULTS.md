@@ -1,11 +1,12 @@
 # Model Latest Risk Score Results
 
 - Source run ID: `20260515T114046Z`
-- Scored at UTC: `2026-05-31T17:13:20.421085+00:00`
+- Scored at UTC: `2026-06-01T13:52:30.002831+00:00`
 - Latest week: `2026-05-11`
 - Model version: `sklearn_logistic_v1`
 - Model type: `sklearn_logistic_regression_pipeline`
 - Scoring method: `sklearn_logistic_latest_week`
+- Promotion decision: `data/processed/backfill/20260515T114046Z/model_promotion_decision.json`
 - Model artifact: `data/processed/backfill/20260515T114046Z/sklearn_logistic_pipeline.joblib`
 - Input CSV: `data/processed/backfill/20260515T114046Z/weekly_features.csv`
 - Output CSV: `data/processed/backfill/20260515T114046Z/model_latest_risk_scores.csv`

@@ -240,9 +240,11 @@ def main() -> int:
     summary_path = processed_run_dir / "baseline_model_summary.json"
     coefficients_path = processed_run_dir / "baseline_logistic_coefficients.csv"
     predictions_path = processed_run_dir / "baseline_test_predictions.csv"
+    promotion_decision_path = processed_run_dir / "model_promotion_decision.json"
     model_latest_scores_path = processed_run_dir / "model_latest_risk_scores.csv"
     model_latest_summary_path = processed_run_dir / "model_latest_risk_summary.json"
     report_path = REPORTS_DIR / "backfill_baseline_model_latest.md"
+    promotion_report_path = REPORTS_DIR / "model_promotion_gate_latest.md"
     model_latest_report_path = REPORTS_DIR / "model_latest_risk_scores_latest.md"
 
     summary = read_json(summary_path)
@@ -262,6 +264,8 @@ def main() -> int:
         report_path,
     ]
     for optional_path in [
+        promotion_decision_path,
+        promotion_report_path,
         model_latest_scores_path,
         model_latest_summary_path,
         model_latest_report_path,

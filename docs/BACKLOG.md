@@ -354,3 +354,55 @@ Next:
 Use MLflow model artifact/alias as the scoring input.
 Add a promotion gate before model_latest scoring is published.
 ```
+
+## R10. Model promotion gate
+
+Status: done
+
+Implemented a model promotion gate between held-out test scoring and latest-week
+model scoring.
+
+```text
+pipelines/evaluate_model_gate.py
+  -> reads baseline_model_summary.json
+  -> checks model artifact / predictions / test positives / AP / Brier score
+  -> writes model_promotion_decision.json
+  -> writes docs/MODEL_PROMOTION_GATE_RESULTS.md
+```
+
+Airflow task sequence:
+
+```text
+score_batch
+  -> evaluate_model_gate
+  -> score_latest
+```
+
+Current default gate:
+
+```text
+blocking:
+  model artifact exists
+  predictions CSV exists
+  test positives >= 10
+  logistic AP >= rule AP
+  logistic Brier <= rule Brier
+
+warning:
+  logistic precision@25 < rule precision@25
+```
+
+Verified:
+
+```text
+source_run_id: 20260515T114046Z
+promotion_status: approved
+warning_count: 1
+```
+
+Next:
+
+```text
+Use MLflow model artifact/alias as the score_latest input.
+Later, tighten the promotion gate with --require-precision-at-k after ranking improves.
+```
